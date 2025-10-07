@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
+import Toast from 'react-native-toast-message';
 
 
 export const unstable_settings = {
@@ -17,18 +18,15 @@ export default function RootLayout() {
   // file is added to `assets/fonts`.
   if (!loaded) {
     return (
-      <Stack>
+      <>
+       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
+      <Toast />
+      </>
     );
   }
 
-  return (
-    <Stack>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-    </Stack>
-  );
 }
 

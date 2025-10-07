@@ -62,23 +62,30 @@ if (loading) {
       </SafeAreaView>
     );
   }
-  return (
+    return (
     <View style={styles.wrapper}>
       <HomeHeader />
       <View style={styles.contentContainer}>
-        <ScrollView showsVerticalScrollIndicator={false} 
-        contentContainerStyle={styles.scrollContainerView}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContainerView}
+        >
           <View style={styles.categoriesSection}>
             <View style={styles.sectionHeader}>
-               <Text style={styles.sectionTitle}>Categories</Text>
+              <Text style={styles.sectionTitle}>Categories</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {categories.map((category) => (
-                <TouchableOpacity style={styles.categoryButton} 
-                onPress={() => navigateToCategory(category)} 
-                key={category}
+              {categories?.map((category) => (
+                <TouchableOpacity
+                  key={category}
+                  style={styles.categoryButton}
+                  onPress={() => navigateToCategory(category)}
                 >
-                  <AntDesign name='tags' size={16} color={AppColors.primary[500]} />
+                  <AntDesign
+                    name="tag"
+                    size={16}
+                    color={AppColors.primary[500]}
+                  />
                   <Text style={styles.categoryText}>
                     {category.charAt(0).toUpperCase() + category.slice(1)}
                   </Text>
@@ -86,7 +93,7 @@ if (loading) {
               ))}
             </ScrollView>
           </View>
-                    <View style={styles.featuredSection}>
+          <View style={styles.featuredSection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Featured Products</Text>
               <TouchableOpacity>
@@ -105,9 +112,9 @@ if (loading) {
                 </View>
               )}
             />
-            </View>
-            {/* Newest Arrivals */}
-           <View style={styles.newestSection}>
+          </View>
+          {/* Newest Products */}
+          <View style={styles.newestSection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Newest Arrivals</Text>
               <TouchableOpacity>
@@ -130,6 +137,7 @@ if (loading) {
     </View>
   );
 }
+
 
 
 const styles = StyleSheet.create({

@@ -15,6 +15,21 @@ return await response.json();
     throw error;
   }
 }
+//GetSigleproduct
+
+export const getProduct = async (id: number): Promise<Product> => {
+  try {
+    const response = await fetch(`${API_URL}/products/${id}`);
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Failed to fetch product with ID ${id}:`, error);
+    throw error;
+  }
+};
+
 //get all categories
 const getCategories = async () : Promise<string[]> => {
   try{

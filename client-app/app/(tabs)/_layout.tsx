@@ -6,7 +6,6 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Feather, Foundation } from '@expo/vector-icons';
-
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
@@ -56,6 +55,13 @@ export default function TabLayout() {
         name="favorites"
         options={{
          href: null,
+        }}
+      />
+         <Tabs.Screen
+        name="product/[id]"
+        options={{
+         href: null,
+       
         }}
       />
 
