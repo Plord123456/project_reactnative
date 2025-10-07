@@ -5,6 +5,7 @@ const API_URL = 'https://fakestoreapi.com';
 const getProducts = async () : Promise<Product[]> => {
   try{
 const response = await fetch(`${API_URL}/products`);
+console.log(response,"api response");
 if(!response.ok){
   throw new Error('Failed to fetch products');
 }
