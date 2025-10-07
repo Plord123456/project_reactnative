@@ -1,23 +1,39 @@
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import Toast from 'react-native-toast-message';
+import { useEffect } from 'react';
+import { SplashScreen } from 'expo-router';
 
+// Ngăn màn hình splash tự động ẩn đi
+SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  // Đảm bảo rằng việc tải lại sẽ điều hướng về (tabs)
+  initialRouteName: '(tabs)',
 };
 
 export default function RootLayout() {
-  const [loaded] = useFonts({
+  const [loaded, error] = useFonts({
     SpaceMono: require('@/assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  // If the custom font isn't available or hasn't finished loading, don't return
-  // null (which produces a blank screen). Instead render the navigation stack
-  // as a fallback so the app UI appears while fonts load or until a real font
-  // file is added to `assets/fonts`.
+  // Expo Router sẽ bắt lỗi và hiển thị màn hình lỗi
+  useEffect(() => {
+    if (error) throw error;
+  }, [error]);
+
+  useEffect(() => {
+    if (loaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
+  // Không render gì cho đến khi font được tải xong
   if (!loaded) {
-    return (
+    return null;
+  }
+
+  return (
       <>
        <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -25,8 +41,5 @@ export default function RootLayout() {
       </Stack>
       <Toast />
       </>
-    );
-  }
-
+  );
 }
-

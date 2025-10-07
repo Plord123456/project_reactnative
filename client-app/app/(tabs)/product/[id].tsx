@@ -3,16 +3,16 @@ import React, { useEffect, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import CommonHeader from "@/components/CommonHeader";
 import { Product } from "@/type";
-import AppColors from "@/constants/theme";
 import { getProduct } from "@/lib/api";
+import AppColors from "@/constants/theme";
 
 const SingleProductScreen = () => {
-const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const idNum = Number(id);  
+  const idNum = Number(id);
   useEffect(() => {
     const fetchProductData = async () => {
       setLoading(true);
@@ -34,7 +34,7 @@ const { id } = useLocalSearchParams<{ id: string }>();
 
   console.log(product, "product");
 
-   return (
+  return (
     <View
       style={{ paddingTop: 30, backgroundColor: AppColors.background.primary }}
     >
@@ -42,9 +42,7 @@ const { id } = useLocalSearchParams<{ id: string }>();
     </View>
   );
 };
+
 export default SingleProductScreen;
 
-const styles = StyleSheet.create({
-
-});
-  
+const styles = StyleSheet.create({});
