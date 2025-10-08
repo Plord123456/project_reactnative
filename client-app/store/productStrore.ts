@@ -1,58 +1,102 @@
-import {create} from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { persist,createJSONStorage } from 'zustand/middleware';
+import { create } from 'zustand';
 import { Product } from '@/type';
-import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 import { getCategories, getProducts } from '@/lib/api';
 
-interface ProductState {
-  products: Product[];
-  categories: string[];
-  loading: boolean;
-  filteredProducts: Product[];
-  error: string | null;
-  //Product actions
-  fetchProducts: () => Promise<void>;
-  fetchCategories: () => Promise<void>;   
+// Định nghĩa kiểu cho việc sắp xếp
+type SortByType = "price-asc" | "price-desc" | "rating" | null;
 
+interface ProductsState {
+    products: Product[];           // Master list: Chỉ fetch 1 lần và giữ nguyên
+    filteredProducts: Product[];   // Danh sách sản phẩm hiển thị trên UI
+    categories: string[];          // Danh sách các danh mục
+    query: string;
+    loading: boolean;
+    selectedCategory: string | null;
+    sortBy: SortByType;
+
+    fetchInitialData: () => Promise<void>; // Gộp fetch products và categories
+    setCategory: (category: string | null) => void;
+    searchProducts: (query: string) => void;
+    sortProducts: (sortBy: SortByType) => void;
+    applyFilters: () => void; // Thêm hàm helper vào interface
 }
 
-export const useProductStore = create<ProductState>()(
-  persist(
+export const useProductStore = create<ProductsState>(
+
     (set, get) => ({
-      products: [],
-      categories: [],
-      loading: false,
-      filteredProducts: [],
-      error: null,
-      fetchProducts: async () => {
-        try {
-          set({ loading: true, error: null });
-          const products = await getProducts(); 
-          set({ 
-            products, 
-            loading: false, 
-            filteredProducts: products 
-          });
-        } catch (error: any) {
-          set({ error: error.message, loading: false });
+    products: [],
+    filteredProducts: [],
+    categories: [],
+    query: '',
+    loading: false,
+    selectedCategory: null,
+    sortBy: null,
+
+    // --- HELPER FUNCTION ---
+    // Hàm nội bộ để áp dụng tất cả các bộ lọc và sắp xếp đang có
+    applyFilters: () => {
+        const { products, query, selectedCategory, sortBy } = get();
+        let filtered = [...products];
+
+        // 1. Lọc theo danh mục
+        if (selectedCategory) {
+            filtered = filtered.filter(p => p.category === selectedCategory);
         }
-      },
-      fetchCategories: async () => {
-        try {
-          set({ loading: true, error: null });
-          const categories = await getCategories(); 
-          set({ 
-            categories, 
-            loading: false, 
-          });
-        } catch (error: any) {
-          set({ error: error.message, loading: false });
+
+        // 2. Lọc theo từ khóa tìm kiếm
+        if (query) {
+            filtered = filtered.filter(p =>
+                p.title.toLowerCase().includes(query.toLowerCase())
+            );
         }
-      },
-    }),
-    {
-      name: 'product-storage',
-      storage: createJSONStorage(() => AsyncStorage),
-    })
-);
+
+        // 3. Sắp xếp
+        if (sortBy === "price-asc") {
+            filtered.sort((a, b) => a.price - b.price);
+        } else if (sortBy === "price-desc") {
+            filtered.sort((a, b) => b.price - a.price);
+        } else if (sortBy === "rating") {
+            // Giả sử rating là một object { rate: number, count: number }
+            filtered.sort((a, b) => b.rating.rate - a.rating.rate);
+        }
+
+        set({ filteredProducts: filtered });
+    },
+
+    // --- ACTIONS ---
+    fetchInitialData: async () => {
+        try {
+            set({ loading: true });
+            // Fetch đồng thời cả products và categories để tối ưu
+            const [productsData, categoriesData] = await Promise.all([
+                getProducts(),
+                getCategories()
+            ]);
+            
+            set({
+                products: productsData,
+                filteredProducts: productsData, // Ban đầu hiển thị tất cả
+                categories: categoriesData,
+                loading: false,
+            });
+        } catch (error: any) {
+            console.error("Failed to fetch initial data:", error);
+            set({ loading: false });
+        }
+    },
+
+    setCategory: (category: string | null) => {
+        set({ selectedCategory: category, query: '' }); // Reset query khi đổi category
+        get().applyFilters(); // Gọi hàm helper để áp dụng lại tất cả bộ lọc
+    },
+
+    searchProducts: (query: string) => {
+        set({ query });
+        get().applyFilters(); // Gọi hàm helper
+    },
+
+    sortProducts: (sortBy: SortByType) => {
+        set({ sortBy });
+        get().applyFilters(); // Gọi hàm helper
+    },
+}));

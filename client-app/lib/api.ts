@@ -43,5 +43,39 @@ return await response.json();
     throw error;
   }
 }
+const getProductsByCategory = async (
+  category: string
+): Promise<Product[]> => {
+  try {
+    const response = await fetch(`${API_URL}/products/category/${category}`);
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Failed to fetch products in category ${category}:`, error);
+    throw error;
+  }
+};
 
-export {getProducts, getCategories};
+const searchProductsAPI = async (query: string): Promise<Product[]> => {
+  try {
+    const response = await fetch(`${API_URL}/products`);
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
+    }
+    const  products = await response.json();
+    const searchResults = query.toLowerCase().trim();
+    // Lọc sản phẩm dựa trên tiêu đề chứa từ khóa tìm kiếm (không phân biệt hoa thường)
+    return products.filter((product: Product) =>
+      product.title.toLowerCase().includes(searchResults) ||
+      product.description.toLowerCase().includes(searchResults) ||
+      product.category.toLowerCase().includes(searchResults)
+    );
+  } catch (error) {
+    console.error(`Failed to search products with query ${query}:`, error);
+    throw error;
+  }
+};
+
+export {getProducts, getCategories, getProductsByCategory, searchProductsAPI};
