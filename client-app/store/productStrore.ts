@@ -120,9 +120,8 @@ export const useProductStore = create<ProductsState>((set, get) => ({
 
     const trimmedQuery = query.trim();
 
-    // 1. Chỉ tìm kiếm khi query có đủ 3 ký tự trở lên
-    if (trimmedQuery.length < 3) {
-        // Nếu query ngắn hơn 3 ký tự, xóa kết quả cũ và dừng lại
+    if (trimmedQuery.length < 2) {
+        // Nếu query ngắn hơn 2 ký tự, xóa kết quả cũ và dừng lại
         set({ filteredProducts: [], loading: false });
         return;
     }

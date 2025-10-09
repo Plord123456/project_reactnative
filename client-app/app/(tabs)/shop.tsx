@@ -10,20 +10,22 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import EmptyState from "@/components/EmptySate";
 import ProductCard from "@/components/ProductCard";
 import CustomTextInput from "@/components/Textinput";
-
+import { useLocalSearchParams } from "expo-router";
 const ShopScreen = () => {
+  const router = useRouter();
   const {
     filteredProducts,
     categories,
     selectedCategory,
     loading,
     error,
+    products,
     fetchProducts,
     fetchCategories,
     setCategory,
     sortProducts,
   } = useProductStore();
-
+const { categoryParam } = useLocalSearchParams<{ categoryParam?: string }>();
   const [showSortModal, setShowSortModal] = useState(false);
   const [activeSortOption, setActiveSortOption] = useState<string | null>(null);
   const [isFilterActive, setIsFilterActive] = useState(false);
@@ -31,9 +33,12 @@ const ShopScreen = () => {
   useEffect(() => {
     fetchCategories();
     fetchProducts();
+    if (categoryParam) {
+        setCategory(categoryParam);
+    }
   }, []);
 
-  const router = useRouter();
+
 
   const handleSort = (sortBy: "price-asc" | "price-desc" | "rating") => {
     sortProducts(sortBy);
@@ -67,15 +72,16 @@ const ShopScreen = () => {
         
         {/* Search and Filter Container */}
         <View style={styles.searchFilterContainer}>
-          <View style={styles.searchContainer}>
-            <AntDesign name="search" size={20} color={AppColors.gray[400]} />
-            <CustomTextInput
-              style={styles.searchInput}
-              placeholder="Search products..."
-              placeholderTextColor={AppColors.gray[400]}
-              onFocus={() => router.push('/(tabs)/search')} // Navigate on focus for better UX
-            />
-          </View>
+          
+         <TouchableOpacity 
+  style={styles.searchContainer} 
+  activeOpacity={0.8}
+  onPress={() => router.push('/(tabs)/search')}
+>
+  <AntDesign name="search" size={20} color={AppColors.gray[400]} />
+  {/* Dùng Text để hiển thị placeholder thay vì TextInput */}
+  <Text style={styles.searchInput}>Search products...</Text>
+</TouchableOpacity>
           <TouchableOpacity
             onPress={() => setShowSortModal(true)}
             style={[styles.filterButton, isFilterActive && styles.activeButton]}
@@ -141,7 +147,7 @@ const ShopScreen = () => {
         <EmptyState type="search" message="No products found" />
       ) : (
         <FlatList
-          data={filteredProducts}
+          data={filteredProducts || products}
           keyExtractor={(item) => item.id.toString()}
           numColumns={2}
           renderItem={({ item }) => (

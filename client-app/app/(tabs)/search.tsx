@@ -9,6 +9,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import EmptyState from "@/components/EmptySate";
 import ProductCard from "@/components/ProductCard";
 
+
 const SearchScreen = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const searchTimeoutRf = useRef<ReturnType<typeof setTimeout> | null>(null); // Sửa type cho an toàn hơn
@@ -35,7 +36,7 @@ const SearchScreen = () => {
             clearTimeout(searchTimeoutRf.current);
         }
         
-        if (text.trim().length >= 3) {
+        if (text.trim().length >= 2) {
             searchTimeoutRf.current = setTimeout(() => {
                 searchProductsRealtime(text);
             }, 500);
@@ -50,30 +51,28 @@ const SearchScreen = () => {
         setSearchQuery("");
         searchProductsRealtime("");
     }
-
 const renderHeader = () => {
     return (
         <View style={styles.header}>
             <Text style={styles.title}>Search Products</Text>
             
-            {/* Gộp tất cả vào một container duy nhất */}
             <View style={styles.searchContainer}>
-                {/* Icon Search giờ nằm bên trong */}
                 <AntDesign
                     name="search"
                     size={20}
                     color={AppColors.gray[400]}
-                    style={styles.searchIcon}
                 />
 
-                <CustomTextInput
+                {/* Sử dụng TextInput gốc */}
+                <TextInput
                     value={searchQuery}
                     onChangeText={handleSearchChange}
                     placeholder="Search for products..."
-                    style={styles.searchInput} // Dùng style này để reset
+                    placeholderTextColor={AppColors.gray[400]}
+                    style={styles.textInput} // Dùng style mới
+                    autoFocus={true} // Tự động mở bàn phím khi vào màn
                 />
 
-                {/* Nút Clear (X) */}
                 {searchQuery?.length > 0 && (
                     <TouchableOpacity style={styles.clearButton} onPress={handleClearSearch}>
                         <AntDesign
@@ -137,7 +136,7 @@ const styles = StyleSheet.create({
     header: {
         padding: 16,
         paddingBottom: 12,
-        backgroundColor: AppColors.background.secondary, // Màu nền nhẹ nhàng
+        backgroundColor: AppColors.background.secondary,
         borderBottomWidth: 1,
         borderBottomColor: AppColors.gray[100],
     },
@@ -147,36 +146,29 @@ const styles = StyleSheet.create({
         color: AppColors.text.primary,
         marginBottom: 16,
     },
-    // Container chính cho thanh search
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: AppColors.background.primary, // Màu trắng
+        backgroundColor: AppColors.background.primary,
         borderRadius: 12,
         height: 50,
         paddingHorizontal: 12,
         borderWidth: 1,
         borderColor: AppColors.gray[200],
     },
-    // Style cho icon search bên trái
-    searchIcon: {
-        marginRight: 8,
-    },
-    // Style để reset CustomTextInput, giúp nó nằm gọn trong container
-    searchInput: {
+    // Style mới cho TextInput gốc
+    textInput: {
         flex: 1,
-        height: '100%',
-        // Reset các style không cần thiết từ component
-        margin: 0,
-        padding: 0,
-        borderWidth: 0,
-        backgroundColor: 'transparent',
+        fontSize: 16,
+        color: AppColors.text.primary,
+        marginLeft: 8,
+        // Không cần height, vì alignItems: 'center' của container sẽ tự căn giữa
     },
-    // Nút xóa nằm ở cuối
     clearButton: {
         padding: 4,
         marginLeft: 8,
     },
+    // ... các style còn lại giữ nguyên
     errorContainer: {
         flex: 1,
         justifyContent: 'center',

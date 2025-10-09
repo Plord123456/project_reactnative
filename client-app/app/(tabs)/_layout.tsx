@@ -5,7 +5,7 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Feather, Foundation } from '@expo/vector-icons';
+import { Feather, Foundation, FontAwesome } from '@expo/vector-icons';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
@@ -27,7 +27,7 @@ export default function TabLayout() {
         name="shop"
         options={{
           title: 'Shop',
-          tabBarIcon: ({ color }) => <Foundation size={28} name="shopping-bag" color={color} />,
+          tabBarIcon: ({ color }) => <Foundation size={28} name="shopping-cart" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -77,14 +77,19 @@ export default function TabLayout() {
          href: null,
         }}
       />
-
-         <Tabs.Screen
-        name="orders"
+      <Tabs.Screen
+        name="order"
         options={{
-         tabBarButton: () => null,
+         href: null,
         }}
       />
-   
+        <Tabs.Screen
+        name="payment"
+        options={{
+         href: null,
+        }}
+      />
+      
     </Tabs>
   );
 }

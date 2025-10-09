@@ -7,10 +7,17 @@ import { Platform } from 'react-native';
 import Logo from './Logo';
 import { AntDesign, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useCartStore } from '@/store/CartStore';
+import { useFavoritesStore } from '@/store/favortieStore'; // correct hook name (plural) and path
 
 
 const HomeHeader = () => {
-const router = useRouter();
+  const router = useRouter();
+  const { items } = useCartStore();
+  const { favoriteItems } = useFavoritesStore();
+  
+
+
   return (
 <SafeAreaView style={styles.container}>
   <View style={styles.header}>
@@ -23,7 +30,7 @@ const router = useRouter();
       <MaterialCommunityIcons name='heart-outline' size={20} color={AppColors.primary[700]} />
       <View style={styles.itemsView}>
         <Text style={styles.itemsText}>
-          0
+    {favoriteItems.length ? favoriteItems.length : 0}
         </Text>
       </View>
     </TouchableOpacity> 
@@ -31,7 +38,7 @@ const router = useRouter();
       <MaterialCommunityIcons name='cart-outline' size={20} color={AppColors.primary[700]} />
       <View style={styles.itemsView}>
         <Text style={styles.itemsText}>
-          0
+        {items?.length ? items.length : 0}
         </Text>
       </View>
     </TouchableOpacity> 
@@ -94,6 +101,6 @@ container: {
   itemsText: {
     fontSize: 10,
     color: AppColors.accent[500],
-    fontWeight: 800,
+    fontWeight: '800',
   },
 });

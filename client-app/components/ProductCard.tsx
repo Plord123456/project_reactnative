@@ -14,6 +14,10 @@ import Button from "./Button";
 import Toast from "react-native-toast-message";
 import { useRouter } from "expo-router";
 import AppColors from "@/constants/theme";
+import Rating from "./Rating";
+import { useCartStore } from "@/store/CartStore";
+import useFavoritesStore from "@/store/favortieStore";
+import { AntDesign } from "@expo/vector-icons";
 
 interface ProductCardProps {
   product: Product;
@@ -28,13 +32,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const { id, title, price, image, category , rating} = product;
   const router = useRouter();
   const handleProductRoute = () => {
-    router.push({
-      pathname: "/(tabs)/product/[id]",
-      params: { id: id.toString() }
-    });
+    router.push(`/product/${id}`);
   };
+  const { addItem } = useCartStore();
+  const { isFavorite,toggleFavorite } = useFavoritesStore();
+  
+
 
   const handleAddToCart = () => {
+    addItem(product, 1);
     Toast.show({
       type: "success",
       text1: "Product added to cart",
@@ -42,7 +48,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
       visibilityTime: 2000,
     });
   };
-
+const handleToggleFavorite = () => {
+  toggleFavorite(product);
+  
+};
   return (
     <TouchableOpacity
       onPress={handleProductRoute}
@@ -55,6 +64,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
           style={styles.image}
           resizeMode="contain"
         />
+        <TouchableOpacity
+          onPress={handleToggleFavorite}
+          style={[styles.favoriteButton, { borderWidth: isFavorite(id) ? 1 : 0 }]}
+        >
+          <AntDesign
+            name="heart"
+            size={18}
+            color={isFavorite(id) ? AppColors.error : AppColors.gray[400]}
+          />
+        </TouchableOpacity>
       </View>
       <View style={styles.content}>
         <Text style={styles.category}>{category}</Text>
@@ -70,9 +89,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
            <Text style={[styles.price, !compact && { marginBottom: 7 }]}>
             ${price.toFixed(2)}
           </Text>
-          <Text style={[styles.ratingText, !compact && { marginBottom: 7 }]}>
+          <View style={!compact && { marginBottom: 7 }}>
+            <Rating rating={rating?.rate} count={rating?.count} size={12} />
+          </View>
+         
+
+          {/* <Text style={[styles.ratingText, !compact && { marginBottom: 7 }]}>
             {rating?.rate.toFixed(1)} / {`(${rating?.count})`}
-          </Text>
+          </Text> */}
        
           {!compact && (
             <Button

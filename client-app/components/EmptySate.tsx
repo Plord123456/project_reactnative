@@ -1,62 +1,66 @@
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import React from 'react';
 import AppColors from '@/constants/theme';
-import { AntDesign } from '@expo/vector-icons';
+import { AntDesign, Feather, MaterialCommunityIcons } from '@expo/vector-icons'; // Thêm các bộ icon khác
 
-type EmptyStateType = 'search' | 'favorites' | 'cart' | 'orders' | 'profile';
+type EmptyStateType = 'search' | 'favorites' | 'cart' | 'orders' | 'profile' | 'empty';
+
 interface EmptyStateProps {
   type?: EmptyStateType;
   message?: string;
   actionLabel?: string;
   onAction?: () => void;
 }
-const EmptyState: React.FC<EmptyStateProps> = ({ type, message, actionLabel, onAction }) => {
-  const size = 64;
-  const color = AppColors.gray[400];
+
+const EmptyState: React.FC<EmptyStateProps> = ({ type = 'empty', message, actionLabel, onAction }) => {
+  const iconSize = 64;
+  const iconColor = AppColors.gray[300];
+
   const getIcon = () => {
     switch (type) {
       case 'search':
-        return (<AntDesign name="search" size={size} color={color} />);
+        return <AntDesign name="search" size={iconSize} color={iconColor} />;
       case 'favorites':
-        return (<AntDesign name="heart" size={size} color={color} />);
+        return <AntDesign name="heart" size={iconSize} color={iconColor} />;
       case 'cart':
-        return (<AntDesign name="shopping-cart" size={size} color={color} />);
+        return <Feather name="shopping-cart" size={iconSize} color={iconColor} />;
       case 'orders':
-        return (<AntDesign name="shopping-cart" size={size} color={color} />);
+        return <Feather name="package" size={iconSize} color={iconColor} />;
+      case 'profile':
+          return <AntDesign name="user" size={iconSize} color={iconColor} />;
       default:
-        return (<AntDesign name="user" size={size} color={color} />);
+        return <MaterialCommunityIcons name="cloud-question-outline" size={iconSize} color={iconColor} />;
     }
   };
+
   const getDefaultMessage = () => {
     switch (type) {
       case 'search':
-        return 'No results found';
+        return 'No Results Found';
       case 'favorites':
-        return 'No favorite items yet';
+        return 'You haven\'t added any favorites yet';
       case 'cart':
-        return 'Your cart is empty';
+        return 'Your shopping cart is empty';
       case 'orders':
-        return 'No orders placed yet';
+        return 'You have no orders yet';
+      case 'profile':
+        return 'Please log in to see your profile';
       default:
-        return 'No profile information available';
+        return 'Oops! Nothing to see here.';
     }
   };
+
   return (
     <View style={styles.container}>
-      <View style={styles.iconContainer}>
-        {getIcon()}
-        <Text style={styles.message}>
-          {message || getDefaultMessage()}
-          </Text>
-        {actionLabel && onAction && (
-         <View style={styles.button}>
-           <Button
-            title={actionLabel}
-            onPress={onAction}
-           />
-         </View>
-        )}
-      </View>
+      {getIcon()}
+      <Text style={styles.message}>
+        {message || getDefaultMessage()}
+      </Text>
+      {actionLabel && onAction && (
+        <TouchableOpacity style={styles.actionButton} onPress={onAction} activeOpacity={0.8}>
+          <Text style={styles.actionButtonText}>{actionLabel}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -69,17 +73,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
-  },
-  iconContainer: {
-    marginBottom: 16,
+    gap: 24, // Tạo khoảng cách đều giữa các phần tử
   },
   message: {
-    fontSize: 18,
+    fontSize: 16,
     color: AppColors.text.secondary,
     textAlign: "center",
-    marginBottom: 24,
+    lineHeight: 24,
+    maxWidth: 280, // Giới hạn chiều rộng để không quá dài
   },
-  button: {
-    marginTop: 16,
+  actionButton: {
+    backgroundColor: AppColors.primary[500],
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
