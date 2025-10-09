@@ -8,6 +8,7 @@ import { useProductStore } from "@/store/productStrore";
 import { Product } from "@/type";
 import { AntDesign } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useLocalSearchParams, useSearchParams } from "expo-router/build/hooks";
 import React from "react";
 import { useEffect, useState } from "react";
 import {
@@ -22,7 +23,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 
 export default function HomeScreen() {
+  const { category: categoryParam } = useLocalSearchParams<{
+    category?: string
+  }>();
+
   const router = useRouter();
+
+
+
+const [showSortModal, setShowSortModal] = useState(false);
+const [activeSortOption, setActiveSortOption] = useState<string | null>(null);
+const [isFilterActive, setIsFilterActive] = useState(false);
 
   const[featuredProducts,setFeaturedProducts]=React.useState<Product[]
   >([]);
@@ -39,10 +50,13 @@ export default function HomeScreen() {
       setFeaturedProducts(reversedProducts as Product[]);
     }
   }, [products]);
+
 const navigateToCategory = (category: string) => {
   router.push({
     pathname: '/(tabs)/shop',
-    params: { category: category }
+    params: {
+      category
+    }
   });
 }
 

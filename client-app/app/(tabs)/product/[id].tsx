@@ -32,7 +32,6 @@ const SingleProductScreen = () => {
     // }
   }, [id]);
 
-  console.log(product, "product");
 
   return (
     <View
