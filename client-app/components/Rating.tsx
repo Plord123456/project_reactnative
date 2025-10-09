@@ -26,7 +26,7 @@ const Rating: React.FC<RatingProps> = ({ rating, count, size=16, showCount=true 
     
 if (roundedRating % 1 !== 0) {
   stars.push(
-    <View style={styles.halfStarContainer}>
+    <View key="half-star" style={styles.halfStarContainer}>
       <AntDesign
         name="star"
         style={styles.halfStarBackground}

@@ -2,52 +2,65 @@ import { Router } from "express";
 import stripe from "../lib/stripe.js";
 const router = Router();
 
-router.get("/checkout", async (req, res) => {
-  res.reqBody=await req.body ;
-  const{email,price}=res.reqBody;
+router.post("/checkout", async (req, res) => {
+  const { email, price, order_id: orderId } = req.body;
 
-  //ensure price is in  a vaid number and convert to interger cents
-  if(typeof price !=="number" || isNaN(price) || price<=0){
+  if (!email || typeof email !== "string") {
     return res.status(400).json({
       success: false,
-      message: "Invalid price"
+      message: "Email is required",
     });
   }
 
-  //convert price to cents and ensure it's an integer
+  if (typeof price !== "number" || Number.isNaN(price) || price <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid price",
+    });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
   const amountInCents = Math.round(price * 100);
-  try{
-    const customer = await stripe.customers.create(email);
-const ephemeralKey = await stripe.ephemeralKeys.create(
-  { customer: customer.id },
-  { apiVersion: "2025-04-39.basil" }
-);
-const paymentIntent = await stripe.paymentIntents.create({
-  amount: amountInCents,
-  currency: "USD",
-  customer: customer.id,
-  automatic_payment_methods: {
-    enabled: true,
-  },
-  receipt_email: email,
-  description: `Order from ${email}`,
-  metadata: { 
-    enabled: true,
-  },
-});
-   return res.status(200).json({  
-    success: true,
-    message: "Payment session created successfully",
-    ephemeralKey: ephemeralKey.secret,
-    customer: customer.id,
-    paymentIntent: paymentIntent.client_secret,
-    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY
-  });
-  }catch(error){
-    console.log("Error creating payment session:",error);
+
+  try {
+    const customer = await stripe.customers.create({
+      email: normalizedEmail,
+      metadata: orderId ? { latest_order_id: String(orderId) } : {},
+    });
+
+    const ephemeralKey = await stripe.ephemeralKeys.create(
+      { customer: customer.id },
+      { apiVersion: "2024-06-20" }
+    );
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountInCents,
+      currency: "usd",
+      customer: customer.id,
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      receipt_email: normalizedEmail,
+      description: `Order from ${normalizedEmail}`,
+      metadata: {
+        order_id: orderId ?? "",
+        email: normalizedEmail,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment session created successfully",
+      ephemeralKey: ephemeralKey.secret,
+      customer: customer.id,
+      paymentIntent: paymentIntent.client_secret,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+    });
+  } catch (error) {
+    console.error("Error creating payment session:", error);
     res.status(500).json({
-      success:false,
-      message:"Internal Server Error"
+      success: false,
+      message: "Internal Server Error",
     });
   }
 });

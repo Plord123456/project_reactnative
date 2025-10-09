@@ -1,5 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, Platform } from "react-native";
-import Constants from "expo-constants";
+import { StyleSheet, View, Text, TouchableOpacity, FlatList } from "react-native";
 import React, { useState } from "react";
 import { useRouter, Link } from "expo-router";
 import { useCartStore } from "@/store/CartStore";
@@ -13,7 +12,7 @@ import CartItem from "@/components/CartItem";
 import Toast from "react-native-toast-message";
 import { supabase } from "@/lib/superbase";
 import axios from "axios";
-import payment from "./payment";
+import { BACKEND_URL } from "@/config";
 
 const CartScreen = () => {
     const router = useRouter();
@@ -44,6 +43,7 @@ const handlePlaceOrder = async () => {
 
     // Khai báo biến ở đây để có thể truy cập ở cuối hàm
     let paymentIntent, ephemeralKey, customer, orderId;
+    const backendUrl = BACKEND_URL?.replace(/\/$/, "");
 
     try {
         setLoading(true);
@@ -79,10 +79,11 @@ const handlePlaceOrder = async () => {
             order_id: orderId,
         };
         
-        // Cần định nghĩa BACKEND_URL ở đâu đó, ví dụ import từ config
-        const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+        if (!backendUrl) {
+            throw new Error("Backend URL is not configured. Set EXPO_PUBLIC_BACKEND_URL.");
+        }
 
-        const response = await axios.post(`${BACKEND_URL}/checkout`, payload, {
+        const response = await axios.post(`${backendUrl}/checkout`, payload, {
             headers: { 'Content-Type': 'application/json' },
             timeout: 10000,
         });
@@ -119,14 +120,13 @@ const handlePlaceOrder = async () => {
 
     } catch (err: any) {
         console.error("Order placement error:", err);
-        const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
         const isNetworkError = axios.isAxiosError(err) && !err.response;
         
         Toast.show({
             type: "error",
             text1: isNetworkError ? "Network Error" : "Order Failed",
             text2: isNetworkError
-                ? `Cannot reach backend. Please check your connection.`
+                ? `Cannot reach backend at ${BACKEND_URL}. Ensure the server is running and accessible.`
                 : (err?.message ?? "Something went wrong. Please try again."),
             position: "bottom",
             visibilityTime: 5000,

@@ -1,59 +1,67 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import React from 'react';
 import Wrapper from '@/components/Wrapper';
 import AppColors from '@/constants/theme';
 import { Button } from '@react-navigation/elements';
-import { useLocalSearchParams, useRouter } from '@/.expo/types/router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
-import StripePayment from '@/components/StripePayment';
+import useStripePayment from '@/components/StripePayment';
 
-  const router = useRouter();
-   const { paymentIntent, ephemeralKey, customer, total, orderId } = useLocalSearchParams();
-  const {user}=useAuthStore();
-  // Utility function
 const getStringParam = (value: string | string[] | undefined): string =>
   Array.isArray(value) ? value[0] : value || "";
-  const totalValue= Number(getStringParam(total));
 
-  const  stripe= StripePayment({
+const PaymentScreen = () => {
+  const router = useRouter();
+  const { paymentIntent, ephemeralKey, customer, total, orderId } = useLocalSearchParams();
+  const { user } = useAuthStore();
+
+  const totalValue = Number(getStringParam(total));
+
+  const paymentArgs = {
     paymentIntent: getStringParam(paymentIntent),
     ephemeralKey: getStringParam(ephemeralKey),
     customer: getStringParam(customer),
     orderId: getStringParam(orderId),
-    userEmail: user?.email || "",
     onSuccess: () => {
-      // Điều hướng người dùng đến trang đơn hàng sau khi thanh toán thành công
-      router.replace('/(tabs)/order');
+      router.replace('/order');
+    },
+  };
+
+  const allParamsPresent = Object.values(paymentArgs).every(Boolean);
+
+  const { handlePayment, isProcessing } = useStripePayment(paymentArgs);
+
+  const handleConfirmPress = () => {
+    if (!allParamsPresent) {
+      Alert.alert('Payment Error', 'Missing payment details. Please return to your cart and try again.');
+      return;
     }
+    handlePayment();
+  };
 
-   
-  });
-
-const paymentScreen = () => {
-
-   return (
-   <Wrapper >
-     <View style={styles.container}>
-      <Text style={styles.title}>Complete Your Payment</Text>
-      <Text style={styles.subtitle}>
-        Please confirm your payment details and proceed to checkout.
-      </Text>
-      <Text style={styles.totalPrice}>
-        Total: ${totalValue.toFixed(2)}
-      </Text>
-      <Button
-        onPress={ ()=>{stripe.handlePayment}}
-        style={styles.button}
-
-      >
-        Confirm Payment
-      </Button>
-    </View>
-   </Wrapper>
+  return (
+    <Wrapper>
+      <View style={styles.container}>
+        <Text style={styles.title}>Complete Your Payment</Text>
+        <Text style={styles.subtitle}>
+          Please confirm your payment details and proceed to checkout.
+        </Text>
+        <Text style={styles.totalPrice}>
+          Total: ${Number.isFinite(totalValue) ? totalValue.toFixed(2) : '0.00'}
+        </Text>
+        <Button
+          onPress={handleConfirmPress}
+          style={styles.button}
+          disabled={isProcessing || !user}
+        >
+          {isProcessing ? 'Processing…' : 'Confirm Payment'}
+        </Button>
+      </View>
+    </Wrapper>
   );
 };
 
-export default paymentScreen;
+export default PaymentScreen;
 
 const styles = StyleSheet.create({
 container: {
