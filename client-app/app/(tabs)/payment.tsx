@@ -23,7 +23,7 @@ const PaymentScreen = () => {
     customer: getStringParam(customer),
     orderId: getStringParam(orderId),
     onSuccess: () => {
-      router.replace('/order');
+      router.replace('/(tabs)/order');
     },
   };
 

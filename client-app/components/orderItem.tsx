@@ -1,258 +1,177 @@
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View, Image, Alert } from 'react-native';
-import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View, Image, TouchableOpacity, Pressable } from 'react-native';
+import React from 'react';
+import { Order } from '@/app/(tabs)/order';
 import AppColors from '@/constants/theme';
-import { Feather } from '@expo/vector-icons';
-import Wrapper from './Wrapper';
-import { Title } from './Titile';
-import axios from 'axios';
-import { BASE_URL } from '@/config';
 import { useRouter } from 'expo-router';
-interface Order {
-  id: number;
-  total_price: number;
-  payment_status: string;
-  created_at: string;
-  items: {
-    product_id: number;
-    title: string;
-    price: number;
-    quantity: number;
-    image: string;
-  }[];
-}
 
 interface Props {
   order: Order;
-  onDelete: (id: number) => void;
-  email: string | undefined;
-  onViewDetail?: (order: Order) => void;
+  onPayNow: (order: Order) => void;
+  onViewDetail: (orderId: number) => void;
+  isPaying?: boolean;
+  onDelete?: (orderId: number) => void;
 }
 
-const styles = StyleSheet.create({
-  deleteButton: {
-    padding: 8,
-    marginLeft: 12,
-  },
-  payNowButton: {
-    marginTop: 8,
-    backgroundColor: AppColors.primary[500],
-    paddingVertical: 6,
-    width: 80,
-    borderRadius: 4,
-    alignSelf: "flex-start",
-    alignItems: "center",
-  },
-  payNowText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  orderView: {
-    padding: 10,
-    marginVertical: 8,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    elevation: 2,
-  },
-  orderItem: {
-    marginBottom: 8,
-  },
-  orderId: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  orderStatus: {
-    fontWeight: 'bold',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  orderDate: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
-  },
-  itemsContainer: {
-    marginTop: 12,
-    gap: 8,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    backgroundColor: AppColors.gray[50],
-  },
-  itemImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    marginRight: 10,
-    backgroundColor: '#fff',
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: AppColors.text.primary,
-  },
-  itemMeta: {
-    fontSize: 12,
-    color: AppColors.text.secondary,
-    marginTop: 2,
-  },
-  itemSubtotal: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: AppColors.text.primary,
-    marginLeft: 8,
-  },
-  viewDetailsButton: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: AppColors.primary[500],
-  },
-  viewDetailsText: {
-    color: AppColors.primary[500],
-    fontWeight: '600',
-    fontSize: 14,
-  },
-});
+const getStatusStyles = (status?: string) => {
+  const normalized = status?.toLowerCase();
 
-const OrderItem = ({ order, onDelete, email, onViewDetail }: Props) => {
-  const isPaid = order?.payment_status === 'paid' || order?.payment_status === 'success';
-  const [loading, setLoading] = useState(false);
-  const [disable, setDisable] = useState(false);
-  const router = useRouter();
-  const handleViewDetails = () => {
-    if (onViewDetail) {
-      onViewDetail(order);
-    }
-  };
-const handlePayNow = async () => {
-  setLoading(true);
-  setDisable(false);
-  const payload = {
-    price: order?.total_price,
-    email: email,
-  };
-  try {
-const response = await axios.post(`${BASE_URL}/checkout`, payload, {
-  headers: { "Content-Type": "application/json" },
-});
-
-const { paymentIntent, ephemeralKey, customer } = response.data;
-if (response?.data) {
-  Alert.alert("Pay Now", `Initiating payment for order #${order?.id}`, [
-    { text: "Cancel" },
-    { text: "Pay", onPress: () => {
-      router.push({
-    pathname: "/payment",
-    params: {
-      paymentIntent,
-      ephemeralKey,
-      customer,
-      orderId: order?.id,
-      total: order?.total_price,
-    }
-  });
-    }},
-  ]);
-}
-
-  } catch (error) {
-    
-  } finally {
-    setLoading(false);
-    setDisable(false);
+  switch (normalized) {
+    // Trạng thái 'pending' bây giờ sẽ có màu đỏ
+    case 'pending':
+      return {
+        badge: { backgroundColor: '#FEE2E2' }, // Nền đỏ nhạt
+        text: { color: '#B91C1C' },          // Chữ đỏ đậm
+      };
+      
+    // Trạng thái 'paid' (hoặc 'success') bây giờ sẽ có màu xanh
+    case 'paid':
+    case 'success': // Thêm cả 'success' để linh hoạt hơn
+      return {
+        badge: { backgroundColor: '#DCFCE7' }, // Nền xanh nhạt
+        text: { color: '#047857' },          // Chữ xanh đậm
+      };
+      
+    // Mặc định không thay đổi
+    default:
+      return {
+        badge: { backgroundColor: AppColors.gray[100] },
+        text: { color: AppColors.text.secondary },
+      };
   }
 };
 
+const OrderItem = ({ order, onPayNow, onViewDetail, isPaying = false, onDelete }: Props) => {
+  const firstItem = order.items?.[0];
+  const statusStyles = getStatusStyles(order.payment_status);
+  const router = useRouter();
 
-const handleDelete = () => {
-  Alert.alert(
-    "Delete Order",
-    `Are you sure you want to delete Order #${order?.id}`,
-    [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => onDelete(order?.id),
-      },
-    ]
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View>
+          <Text style={styles.orderId}>Order #{order.id}</Text>
+          <Text style={styles.date}>{new Date(order.created_at).toLocaleDateString()}</Text>
+        </View>
+        <View style={[styles.statusBadge, statusStyles.badge]}>
+          <Text style={[styles.statusText, statusStyles.text]}>{order.payment_status}</Text>
+        </View>
+      </View>
+
+      {firstItem && (
+        <Pressable
+          style={styles.itemRow}
+          onPress={() => router.push(`/product/${firstItem.product_id}`)}
+        >
+          <Image source={{ uri: firstItem.image }} style={styles.itemImage} />
+          <View style={styles.itemDetails}>
+            <Text style={styles.itemTitle} numberOfLines={1}>{firstItem.title}</Text>
+            {order.items.length > 1 && (
+              <Text style={styles.moreItemsText}>+ {order.items.length - 1} more items</Text>
+            )}
+          </View>
+        </Pressable>
+      )}
+
+      <View style={styles.cardFooter}>
+        <View>
+          <Text style={styles.totalLabel}>Total</Text>
+          <Text style={styles.totalValue}>${order.total_price.toFixed(2)}</Text>
+        </View>
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity style={styles.viewDetailsButton} onPress={() => onViewDetail(order.id)}>
+            <Text style={styles.viewDetailsButtonText}>View Details</Text>
+          </TouchableOpacity>
+          {order.payment_status !== 'paid' && (
+            <TouchableOpacity
+              style={[styles.payNowButton, isPaying && styles.payNowButtonDisabled]}
+              onPress={() => onPayNow(order)}
+              disabled={isPaying}
+            >
+              {isPaying ? (
+                <ActivityIndicator size="small" color={AppColors.background.primary} />
+              ) : (
+                <Text style={styles.payNowButtonText}>Pay Now</Text>
+              )}
+            </TouchableOpacity>
+          )}
+          {onDelete && (
+            <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(order.id)}>
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    </View>
   );
 };
-return (
-  <View style={[styles.orderView, { borderColor: isPaid ? AppColors.success : AppColors.error, borderWidth: 1 }]}>
-    <View style={styles.orderItem}>
-      <Text style={styles.orderId}>Order #{order?.id}</Text>
-      <Text>Total: ${order?.total_price.toFixed(2)}</Text>
-      <Text style={[styles.orderStatus, { color: isPaid ? AppColors.success : AppColors.error }]}>
-        {isPaid ? 'Paid' : 'Unpaid'}
-      </Text>
-      <Text style={styles.orderDate}>Placed: {new Date(order?.created_at).toLocaleString()}</Text>
-    </View>
-    {onViewDetail && (
-      <TouchableOpacity onPress={handleViewDetails} style={styles.viewDetailsButton}>
-        <Text style={styles.viewDetailsText}>View Details</Text>
-      </TouchableOpacity>
-    )}
-    {!isPaid && (
-      <TouchableOpacity
-      disabled={disable}
-        onPress={handlePayNow}
-        style={[styles.payNowButton]}>
-        {loading ? <ActivityIndicator size="small" color={AppColors.background.primary} /> : (
-          <Text style={styles.payNowText}>Pay Now</Text>
-        )}
-      </TouchableOpacity>
-    )}
-        {order.items?.length ? (
-          <View style={styles.itemsContainer}>
-            {order.items.map((item) => (
-              <View key={`${order.id}-${item.product_id}`} style={styles.itemRow}>
-                {item.image ? (
-                  <Image source={{ uri: item.image }} style={styles.itemImage} resizeMode="cover" />
-                ) : (
-                  <View style={[styles.itemImage, { justifyContent: 'center', alignItems: 'center' }]}> 
-                    <Feather name="image" size={20} color={AppColors.gray[300]} />
-                  </View>
-                )}
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
-                  <Text style={styles.itemMeta}>${item.price.toFixed(2)} × {item.quantity}</Text>
-                </View>
-                <Text style={styles.itemSubtotal}>
-                  ${(item.price * item.quantity).toFixed(2)}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-    <TouchableOpacity
-    onPress={handleDelete}
-style={styles.deleteButton}
-    >
-      <Feather
-
-        name="trash-2"
-        size={20}
-        color={AppColors.error} />
-      
-    </TouchableOpacity>
-  </View>
-);
-}
 
 export default OrderItem;
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: AppColors.background.secondary,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: AppColors.gray[100],
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+  },
+  orderId: { fontSize: 16, fontWeight: '600', color: AppColors.text.primary },
+  date: { fontSize: 12, color: AppColors.text.secondary, marginTop: 4 },
+  statusBadge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 20 },
+  statusText: { fontSize: 12, fontWeight: '600', textTransform: 'capitalize' },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: AppColors.gray[50],
+  },
+  itemImage: { width: 50, height: 50, borderRadius: 8, marginRight: 12, backgroundColor: '#fff' },
+  itemDetails: { flex: 1 },
+  itemTitle: { fontSize: 14, fontWeight: '500', color: AppColors.text.primary },
+  moreItemsText: { fontSize: 12, color: AppColors.text.secondary, marginTop: 4 },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: AppColors.gray[100],
+    padding: 16,
+    backgroundColor: AppColors.gray[50],
+  },
+  totalLabel: { fontSize: 14, color: AppColors.text.secondary },
+  totalValue: { fontSize: 18, fontWeight: 'bold', color: AppColors.text.primary },
+  actionsContainer: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  viewDetailsButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: AppColors.gray[200],
+  },
+  viewDetailsButtonText: { color: AppColors.text.primary, fontWeight: '500', fontSize: 14 },
+  payNowButton: {
+    backgroundColor: AppColors.primary[500],
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  payNowButtonDisabled: {
+    opacity: 0.6,
+  },
+  payNowButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  deleteButton: {
+    backgroundColor: AppColors.error,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  deleteButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+});
