@@ -3,9 +3,35 @@ import React from 'react';
 import Wrapper from '@/components/Wrapper';
 import AppColors from '@/constants/theme';
 import { Button } from '@react-navigation/elements';
+import { useLocalSearchParams, useRouter } from '@/.expo/types/router';
+import { useAuthStore } from '@/store/auth';
+import StripePayment from '@/components/StripePayment';
 
-const payment = () => {
-  return (
+  const router = useRouter();
+   const { paymentIntent, ephemeralKey, customer, total, orderId } = useLocalSearchParams();
+  const {user}=useAuthStore();
+  // Utility function
+const getStringParam = (value: string | string[] | undefined): string =>
+  Array.isArray(value) ? value[0] : value || "";
+  const totalValue= Number(getStringParam(total));
+
+  const  stripe= StripePayment({
+    paymentIntent: getStringParam(paymentIntent),
+    ephemeralKey: getStringParam(ephemeralKey),
+    customer: getStringParam(customer),
+    orderId: getStringParam(orderId),
+    userEmail: user?.email || "",
+    onSuccess: () => {
+      // Điều hướng người dùng đến trang đơn hàng sau khi thanh toán thành công
+      router.replace('/(tabs)/order');
+    }
+
+   
+  });
+
+const paymentScreen = () => {
+
+   return (
    <Wrapper >
      <View style={styles.container}>
       <Text style={styles.title}>Complete Your Payment</Text>
@@ -13,11 +39,12 @@ const payment = () => {
         Please confirm your payment details and proceed to checkout.
       </Text>
       <Text style={styles.totalPrice}>
-        Total: 100$
+        Total: ${totalValue.toFixed(2)}
       </Text>
       <Button
-        onPress={ ()=>{}}
+        onPress={ ()=>{stripe.handlePayment}}
         style={styles.button}
+
       >
         Confirm Payment
       </Button>
@@ -26,7 +53,7 @@ const payment = () => {
   );
 };
 
-export default payment;
+export default paymentScreen;
 
 const styles = StyleSheet.create({
 container: {

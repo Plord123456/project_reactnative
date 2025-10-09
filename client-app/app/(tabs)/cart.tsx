@@ -112,8 +112,10 @@ const handlePlaceOrder = async () => {
                 ephemeralKey,
                 customer,
                 orderId: orderId, // Truyền orderId để cập nhật sau
+                total: total, // Truyền tổng tiền để hiển thị trên trang thanh toán
             },
         });
+        clearCart(); // Xóa giỏ hàng sau khi đặt hàng thành công
 
     } catch (err: any) {
         console.error("Order placement error:", err);
