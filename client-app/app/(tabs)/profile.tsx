@@ -12,6 +12,7 @@ import Button from "@/components/Button";
 const ProfileScreen = () => {
     const { user, isLoading, logout, checkSession } = useAuthStore();
     const router = useRouter();
+  
 
     const menuItems = [
         {
@@ -36,13 +37,13 @@ const ProfileScreen = () => {
             id: 'shipping',
             icon: <MaterialIcons name="local-shipping" size={20} color={AppColors.gray[500]} />,
             title: "Shipping Addresses",
-            onPress: () => {},
+            onPress: () => router.push('/(tabs)/shipping-address'),
         },
         {
             id: 'settings',
             icon: <Foundation name="widget" size={20} color={AppColors.gray[500]} />,
             title: "Settings",
-            onPress: () => {}
+            onPress: () => router.push('/(tabs)/settings')
         },
     ];
 
@@ -136,7 +137,12 @@ const ProfileScreen = () => {
                         </View>
                         <View style={styles.userInfoContainer}>
                             <Text style={styles.nameText}>{user.email}</Text>
-                            <TouchableOpacity>
+                            {user.full_name ? (
+                                <Text style={styles.secondaryText}>{user.full_name}</Text>
+                            ) : null}
+                            <TouchableOpacity
+                                onPress={() => router.push('/(tabs)/edit-profile')}
+                            >
                                 <Text style={styles.editProfileText}>Edit Profile</Text>
                             </TouchableOpacity>
                         </View>
@@ -231,6 +237,11 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '600',
         color: AppColors.text.primary,
+    },
+    secondaryText: {
+        fontSize: 14,
+        color: AppColors.text.secondary,
+        marginTop: 4,
     },
     editProfileText: {
         fontSize: 14,
@@ -346,4 +357,8 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
 });
+
+function useAuth(): { signOut: any; } {
+    throw new Error("Function not implemented.");
+}
 

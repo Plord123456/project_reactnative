@@ -89,12 +89,39 @@ export default function TabLayout() {
          href: null,
         }}
       />
+
         <Tabs.Screen
         name="payment"
         options={{
          href: null,
         }}
       />
+        <Tabs.Screen
+        name="edit-profile"
+        options={{
+         href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+         href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="shipping-address"
+        options={{
+         href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="change-password"
+        options={{
+         href: null,
+        }}
+      />
+      
+      
       
     </Tabs>
   );

@@ -52,6 +52,7 @@ const handleToggleFavorite = () => {
   toggleFavorite(product);
   
 };
+
   return (
     <TouchableOpacity
       onPress={handleProductRoute}

@@ -148,7 +148,14 @@ const styles = StyleSheet.create({
   },
   totalLabel: { fontSize: 14, color: AppColors.text.secondary },
   totalValue: { fontSize: 18, fontWeight: 'bold', color: AppColors.text.primary },
-  actionsContainer: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  actionsContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 8,
+  },
   viewDetailsButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -160,7 +167,7 @@ const styles = StyleSheet.create({
   payNowButton: {
     backgroundColor: AppColors.primary[500],
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderRadius: 8,
   },
   payNowButtonDisabled: {
@@ -170,7 +177,7 @@ const styles = StyleSheet.create({
   deleteButton: {
     backgroundColor: AppColors.error,
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderRadius: 8,
   },
   deleteButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
