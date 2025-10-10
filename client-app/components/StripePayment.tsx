@@ -68,7 +68,7 @@ const useStripePayment = ({
           text: 'OK',
           onPress: () => {
             onSuccess();
-            router.replace('/order');
+            router.replace('/(tabs)/order');
           },
         },
       ]);
