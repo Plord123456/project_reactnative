@@ -26,6 +26,14 @@ export interface Order {
     quantity: number;
     image: string;
   }[];
+    shipping_address?: {
+        phone?: string;
+        street?: string;
+        city?: string;
+        state?: string;
+        postal_code?: string;
+        country?: string;
+    } | null;
 }
 
 const OrdersScreen = () => {
@@ -45,7 +53,7 @@ const OrdersScreen = () => {
             setLoading(true);
             const { data, error } = await supabase
                 .from('orders')
-                .select('id, total_price, payment_status, created_at, items')
+                .select('id, total_price, payment_status, created_at, items, shipping_address')
                 .eq('user_email', user.email)
                 .order('created_at', { ascending: false });
 

@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert, Image } from "react-native";
 import React from "react";
 import { useAuthStore } from "@/store/auth";
 import { useRouter } from "expo-router";
@@ -36,8 +36,8 @@ const ProfileScreen = () => {
         {
             id: 'shipping',
             icon: <MaterialIcons name="local-shipping" size={20} color={AppColors.gray[500]} />,
-            title: "Shipping Addresses",
-            onPress: () => router.push('/(tabs)/shipping-address'),
+            title: "Shipping Details",
+            onPress: () => router.push('/(tabs)/shipping-detail'),
         },
         {
             id: 'settings',
@@ -133,7 +133,11 @@ const ProfileScreen = () => {
                     {/* 2. User Info Card */}
                     <View style={styles.profileCard}>
                         <View style={styles.avatarContainer}>
-                            <Feather name="user" size={40} color={AppColors.gray[500]} />
+                            {user.avatar_url ? (
+                                <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />
+                            ) : (
+                                <Feather name="user" size={40} color={AppColors.gray[500]} />
+                            )}
                         </View>
                         <View style={styles.userInfoContainer}>
                             <Text style={styles.nameText}>{user.email}</Text>
@@ -229,6 +233,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
+    },
+    avatarImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 30,
     },
     userInfoContainer: {
         flex: 1,

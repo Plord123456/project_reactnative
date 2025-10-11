@@ -1,1 +1,2 @@
-export { default } from './(tabs)/shipping-address';
+
+export { default } from './(tabs)/shipping-detail';

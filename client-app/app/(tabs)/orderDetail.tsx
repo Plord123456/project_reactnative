@@ -38,7 +38,11 @@ const OrderDetailScreen = () => {
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
     const handleBackToOrders = () => {
-        router.replace('/(tabs)/order');
+        if (router.canGoBack()) {
+            router.back();
+            return;
+        }
+        router.push('/(tabs)/order');
     };
 
     useEffect(() => {
@@ -101,10 +105,33 @@ const OrderDetailScreen = () => {
                             <Text style={styles.summaryLabel}>Placed</Text>
                             <Text style={styles.summaryValue}>{formattedDate}</Text>
                         </View>
-                        <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>Items</Text>
-                            <Text style={styles.summaryValue}>{itemCount}</Text>
-                        </View>
+                                                <View style={styles.summaryRow}>
+                                                        <Text style={styles.summaryLabel}>Items</Text>
+                                                        <Text style={styles.summaryValue}>{itemCount}</Text>
+                                                </View>
+                                                {order.shipping_address ? (
+                                                    <View style={styles.addressSection}>
+                                                        <Text style={styles.addressTitle}>Shipping details</Text>
+                                                        <View style={styles.addressRow}>
+                                                            <Text style={styles.addressLabel}>Phone</Text>
+                                                            <Text style={styles.addressValue}>{order.shipping_address?.phone ?? '—'}</Text>
+                                                        </View>
+                                                        <View style={styles.addressRow}>
+                                                            <Text style={styles.addressLabel}>Address</Text>
+                                                            <Text style={styles.addressValue}>
+                                                                {(() => {
+                                                                    const parts = [
+                                                                        order.shipping_address?.street,
+                                                                        [order.shipping_address?.city, order.shipping_address?.state].filter(Boolean).join(', '),
+                                                                        order.shipping_address?.postal_code,
+                                                                        order.shipping_address?.country,
+                                                                    ].filter(Boolean);
+                                                                    return parts.length ? parts.join('\n') : '—';
+                                                                })()}
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+                                                ) : null}
                     </View>
                 }
                 data={order.items}
@@ -145,6 +172,32 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         marginBottom: 20,
         gap: 8,
+    },
+    addressSection: {
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: AppColors.gray[100],
+        gap: 12,
+    },
+    addressTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: AppColors.text.primary,
+    },
+    addressRow: {
+        gap: 4,
+    },
+    addressLabel: {
+        fontSize: 12,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        color: AppColors.text.secondary,
+    },
+    addressValue: {
+        fontSize: 14,
+        color: AppColors.text.primary,
+        lineHeight: 20,
     },
     summaryRow: {
         flexDirection: 'row',

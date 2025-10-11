@@ -1,5 +1,5 @@
-import { StyleSheet, View, Text, TouchableOpacity, FlatList } from "react-native";
-import React, { useState } from "react";
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, Alert } from "react-native";
+import React, { useEffect, useState } from "react";
 import { useRouter, Link } from "expo-router";
 import { useCartStore } from "@/store/CartStore";
 import { useAuthStore } from "@/store/auth";
@@ -19,16 +19,40 @@ const CartScreen = () => {
     const { items, getTotalPrice, clearCart } = useCartStore();
     const { user } = useAuthStore();
     const [loading, setLoading] = useState(false);
+    const [address, setAddress] = useState<any>(null);
 
     const subtotal = getTotalPrice();
     const shippingCost = subtotal > 500 ? 0 : 5.99;
     const total = subtotal + shippingCost;
 
+    useEffect(() => {
+        if (user) {
+            fetchAddress(user.id);
+        }
+    }, [user]);
+
+    const fetchAddress = async (id: string) => {
+        // Replace this with your actual address fetching logic
+        // Example: fetch from supabase or your backend
+        try {
+            const { data, error } = await supabase
+                .from('addresses')
+                .select('*')
+                .eq('user_id', id)
+                .single();
+            if (error) {
+                setAddress(null);
+            } else {
+                setAddress(data);
+            }
+        } catch (err) {
+            setAddress(null);
+        }
+    };
+
     const handlePress = (product: Product) => {
         router.push(`/product/${product.id}`);
     };
-    
-
 const handlePlaceOrder = async () => {
     if (!user) {
         Toast.show({
@@ -39,6 +63,27 @@ const handlePlaceOrder = async () => {
             visibilityTime: 3000,
         });
         return; // Dừng hàm tại đây
+    }
+
+    const requiredAddressFields: Array<keyof typeof address> = ['phone', 'street', 'city', 'state', 'postal_code', 'country'];
+    const missingFields = !address
+        ? requiredAddressFields
+        : requiredAddressFields.filter((field) => !address?.[field]);
+
+    if (!address || missingFields.length > 0) {
+        const message = !address
+            ? 'Please add a shipping address before proceeding to checkout.'
+            : 'Please complete your shipping details (phone, address, city, state, postal code, country) before placing an order.';
+
+        Alert.alert(
+            'No Shipping Address',
+            message,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Add Address', onPress: () => router.push('/(tabs)/shipping-detail') }
+            ]
+        );
+        return;
     }
 
     // Khai báo biến ở đây để có thể truy cập ở cuối hàm
@@ -58,6 +103,14 @@ const handlePlaceOrder = async () => {
                 title: item.product.title,
             })),
             payment_status: "pending",
+            shipping_address: {
+                phone: address.phone,
+                street: address.street,
+                city: address.city,
+                state: address.state,
+                postal_code: address.postal_code,
+                country: address.country,
+            },
         };
 
         const { data, error } = await supabase
@@ -307,9 +360,7 @@ const styles = StyleSheet.create({
     alertView: {
         marginTop: 8,
         padding: 10,
-        backgroundColor: AppColors.gray[50],
-        borderRadius: 8,
-        alignItems: "center",
+// fetchAddress is now defined inside the component and uses setAddress state.
         flexDirection: 'row',
         justifyContent: 'center',
     },
@@ -326,3 +377,7 @@ const styles = StyleSheet.create({
         marginLeft: 4,
     },
 });
+
+function fetchAddress(id: string) {
+    throw new Error("Function not implemented.");
+}

@@ -109,7 +109,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="shipping-address"
+        name="shipping-detail"
         options={{
          href: null,
         }}

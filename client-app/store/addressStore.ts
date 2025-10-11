@@ -1,93 +1,93 @@
 // store/addressStore.ts
 import { create } from 'zustand';
 import { supabase } from '@/lib/superbase';
-import { useAuthStore } from './auth'; // Import auth store để lấy user_id
+import { useAuthStore } from './auth';
 
+// 1. Định nghĩa lại Type cho đơn giản hơn
+// Không cần 'id' và 'is_default' nữa vì user_id là khóa chính
 export interface Address {
-  id: string;
   user_id: string;
-  street?: string;
-  city?: string;
-  state?: string; // Tỉnh/Thành phố
-  postal_code?: string;
-  country?: string;
-  is_default: boolean;
+  phone: string;
+  street: string;
+  city: string;
+  state?: string | null;
+  postal_code: string;
+  country: string;
+  created_at?: string; // Tùy chọn
 }
 
+// Các trường dữ liệu cần để tạo hoặc cập nhật
+type AddressUpsert = Omit<Address, 'user_id' | 'created_at'>;
+
+// 2. Định nghĩa State mới, chỉ quản lý một địa chỉ (address)
 interface AddressState {
-  addresses: Address[];
-  isLoading: boolean;
+  address: Address | null;
+  loading: boolean;
   error: string | null;
-  fetchAddresses: () => Promise<void>;
-  addAddress: (newAddress: Omit<Address, 'id' | 'user_id' | 'is_default'>) => Promise<boolean>;
-  updateAddress: (addressId: string, updatedFields: Partial<Address>) => Promise<boolean>;
-  deleteAddress: (addressId: string) => Promise<void>;
-  setDefaultAddress: (addressId: string) => Promise<void>;
+  fetchAddress: () => Promise<void>;
+  updateAddress: (addressData: AddressUpsert) => Promise<void>;
 }
 
-export const useAddressStore = create<AddressState>((set, get) => ({
-  addresses: [],
-  isLoading: false,
+export const useAddressStore = create<AddressState>((set) => ({
+  address: null,
+  loading: false,
   error: null,
 
-  fetchAddresses: async () => {
+  // 3. Hàm fetchAddress được đơn giản hóa
+  fetchAddress: async () => {
     const user = useAuthStore.getState().user;
-    if (!user) return;
+    if (!user) {
+      set({ address: null });
+      return;
+    }
 
-    set({ isLoading: true, error: null });
+    set({ loading: true, error: null });
     try {
       const { data, error } = await supabase
         .from('addresses')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .single(); // Dùng .single() để lấy MỘT bản ghi duy nhất
 
-      if (error) throw error;
-      set({ addresses: data || [], isLoading: false });
+      // Lỗi 'PGRST116' của Supabase có nghĩa là không tìm thấy dòng nào.
+      // Đây là trường hợp hợp lệ (người dùng chưa có địa chỉ), không phải là lỗi.
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      set({ address: data, loading: false });
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-      console.error("Error fetching addresses:", error.message);
+      console.error("Error fetching address:", error.message);
+      set({ error: error.message, loading: false });
     }
   },
 
-  addAddress: async (newAddress) => {
+  // 4. Hàm update/add được gộp thành một hàm upsert duy nhất
+  updateAddress: async (addressData) => {
     const user = useAuthStore.getState().user;
-    if (!user) return false;
+    if (!user) throw new Error("User is not authenticated.");
 
-    set({ isLoading: true });
+    set({ loading: true });
     try {
+      // Dùng .upsert() để tạo mới nếu chưa có hoặc cập nhật nếu đã tồn tại
+      // Dựa trên khóa chính là `user_id`
       const { data, error } = await supabase
         .from('addresses')
-        .insert([{ ...newAddress, user_id: user.id }])
+        .upsert({ ...addressData, user_id: user.id })
         .select()
         .single();
-      
-      if (error) throw error;
 
-      if (data) {
-        set(state => ({
-          addresses: [data, ...state.addresses],
-          isLoading: false,
-        }));
-        return true;
+      if (error) {
+        throw error;
       }
-      return false;
+
+      // Cập nhật lại state với dữ liệu mới nhất
+      set({ address: data, loading: false });
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-      return false;
+      console.error("Error updating address:", error.message);
+      set({ error: error.message, loading: false });
+      // Ném lỗi ra để component có thể bắt và hiển thị Alert
+      throw error;
     }
   },
-
-  updateAddress: async (addressId, updatedFields) => {
-    // Tương tự, bạn có thể viết hàm update
-    return true;
-  },
-
-  deleteAddress: async (addressId) => {
-    // Và hàm delete
-  },
-  
-  setDefaultAddress: async (addressId) => {
-      // Logic để set 1 địa chỉ làm mặc định và unset các địa chỉ khác
-  }
 }));

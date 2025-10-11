@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import { readAsStringAsync } from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '@/lib/superbase';
 import { useAuthStore } from '@/store/auth';
@@ -26,8 +26,7 @@ const EditProfileScreen = () => {
 
   try {
     const result = await ImagePicker.launchImageLibraryAsync({
-      // Sửa lỗi cảnh báo "deprecated"
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, 
+      mediaTypes: ['images'], 
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -50,7 +49,7 @@ const EditProfileScreen = () => {
     const filePath = `${user.id}/${Date.now()}.${fileExt}`;
     const contentType = image.mimeType ?? image.type ?? `image/${fileExt}`;
 
-    const base64 = await FileSystem.readAsStringAsync(image.uri, {
+    const base64 = await readAsStringAsync(image.uri, {
       encoding: 'base64',
     });
 
@@ -110,7 +109,18 @@ const EditProfileScreen = () => {
       }
 
       await refreshUser();
-      Alert.alert('Profile updated', 'Your information has been saved.');
+      Alert.alert('Profile updated', 'Your information has been saved.', [
+        {
+          text: 'OK',
+          onPress: () => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.push('/(tabs)/profile');
+            }
+          },
+        },
+      ]);
     } catch (error: any) {
       console.error('Profile update failed:', error);
       Alert.alert('Update failed', error?.message ?? 'Unable to update profile at this time.');
@@ -148,9 +158,9 @@ const EditProfileScreen = () => {
         onBackPress={() => {
           if (router.canGoBack()) {
             router.back();
-          } else {
-            router.push('/(tabs)/profile');
+            return;
           }
+          router.push('/(tabs)/profile');
         }}
       />
       <View style={styles.content}>
