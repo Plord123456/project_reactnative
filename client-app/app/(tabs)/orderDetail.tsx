@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, FlatList, Image, TouchableOpacity, Alert, Pressable } from 'react-native';
+import { StyleSheet, Text, View, FlatList, Image, TouchableOpacity, Alert, Pressable, Button, ActivityIndicator } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/lib/superbase';
@@ -7,7 +7,7 @@ import Loader from '@/components/loader';
 import AppColors from '@/constants/theme';
 import { Order } from '../(tabs)/order';
 import CommonHeader from '@/components/CommonHeader';
-
+ 
 const getStatusStyles = (status?: string) => {
   const normalized = status?.toLowerCase();
 
@@ -32,11 +32,14 @@ const getStatusStyles = (status?: string) => {
       };
   }
 };
+
 const OrderDetailScreen = () => {
-    const { orderId } = useLocalSearchParams<{ orderId: string }>();
+  const { id } = useLocalSearchParams();
+  const orderId = Number(id);
     const router = useRouter();
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
+    const [timelineExpanded, setTimelineExpanded] = useState(false);
     const handleBackToOrders = () => {
         if (router.canGoBack()) {
             router.back();
@@ -68,6 +71,55 @@ const OrderDetailScreen = () => {
         fetchOrderDetails();
     }, [orderId]);
 
+    const handleStartShipping = async () => {
+        if (!orderId) return;
+        Alert.alert("Xác nhận", "Bạn có muốn bắt đầu giao đơn hàng này?", [
+          { text: "Huỷ" },
+          {
+            text: "Bắt đầu",
+            onPress: async () => {
+              const { data, error } = await supabase.functions.invoke("start-shipping-simulation", {
+                body: { order_id: orderId },
+              });
+              if (error) {
+                Alert.alert("Lỗi", error.message);
+                return;
+              }
+              Alert.alert("Thành công", data?.message ?? "Đã khởi tạo vận đơn.");
+            },
+          },
+        ]);
+      };
+    
+      const simulateUpdate = async (status: string) => {
+        if (!orderId) return;
+        const { error } = await supabase.functions.invoke("update-shipping-status", {
+          body: { order_id: orderId, new_status: status },
+        });
+        if (error) {
+          Alert.alert("Lỗi", error.message);
+          return;
+        }
+        Alert.alert("Thành công", `Đã cập nhật trạng thái thành: ${status}`);
+      };
+
+    useEffect(() => {
+        if (!orderId) return;
+        const channel = supabase
+          .channel(`orders:${orderId}`)
+          .on(
+            "postgres_changes",
+            { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${orderId}` },
+            (payload) => {
+              setOrder(payload.new as Order);
+            },
+          )
+          .subscribe();
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      }, [orderId]);
+
     if (loading) return <Loader />;
 
     if (!order) {
@@ -85,6 +137,37 @@ const OrderDetailScreen = () => {
     const formattedDate = new Date(order.created_at).toLocaleDateString();
     const itemCount = order.items?.length ?? 0;
 
+    // Render timeline entries
+    const renderTimeline = () => {
+      const history = (order?.tracking_history ?? []).slice(); // copy
+      if (!history.length) {
+        return <Text style={styles.noTimeline}>No tracking history</Text>;
+      }
+      // newest first
+      history.reverse();
+      const visible = timelineExpanded ? history : history.slice(0, 5);
+      return (
+        <View style={styles.timelineContainer}>
+          {visible.map((h, idx) => (
+            <View key={idx} style={styles.timelineItem}>
+              <View style={styles.timelineDot} />
+              <View style={styles.timelineContent}>
+                <Text style={styles.timelineStatus}>{h.status}</Text>
+                <Text style={styles.timelineMeta}>
+                  {new Date(h.updated_at).toLocaleString()} • {h.location}
+                </Text>
+              </View>
+            </View>
+          ))}
+          {history.length > 5 && (
+            <TouchableOpacity onPress={() => setTimelineExpanded((s) => !s)} style={styles.loadMoreBtn}>
+              <Text style={styles.loadMoreText}>{timelineExpanded ? 'Show less' : `Load ${history.length - 5} more`}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      );
+    };
+    
     return (
         <Wrapper>
             <CommonHeader title={`Order #${order.id} Details`} onBackPress={handleBackToOrders} />
@@ -112,6 +195,11 @@ const OrderDetailScreen = () => {
                                                 {order.shipping_address ? (
                                                     <View style={styles.addressSection}>
                                                         <Text style={styles.addressTitle}>Shipping details</Text>
+                                                        {/* Lightweight timeline rendered below shipping details */}
+                                                        <View style={{ marginTop: 12 }}>
+                                                          <Text style={styles.addressTitle}>Tracking timeline</Text>
+                                                          {renderTimeline()}
+                                                        </View>
                                                         <View style={styles.addressRow}>
                                                             <Text style={styles.addressLabel}>Phone</Text>
                                                             <Text style={styles.addressValue}>{order.shipping_address?.phone ?? '—'}</Text>
@@ -151,6 +239,11 @@ const OrderDetailScreen = () => {
                 )}
                 contentContainerStyle={styles.container}
             />
+            <Button title="Bắt đầu Giao hàng" onPress={handleStartShipping} />
+            <View style={{ marginTop: 20, gap: 12 }}>
+                <Button title="Cập nhật: Đang vận chuyển" onPress={() => simulateUpdate("Đang vận chuyển")} />
+                <Button title="Cập nhật: Giao hàng thành công" onPress={() => simulateUpdate("Giao hàng thành công")} />
+            </View>
         </Wrapper>
     );
 };
@@ -256,4 +349,45 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: AppColors.text.primary,
     },
+    timelineContainer: {
+    marginTop: 8,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  timelineDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#2563EB',
+    marginTop: 6,
+    marginRight: 12,
+  },
+  timelineContent: {
+    flex: 1,
+  },
+  timelineStatus: {
+    fontWeight: '600',
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  timelineMeta: {
+    color: AppColors.text.secondary,
+    fontSize: 12,
+  },
+  noTimeline: {
+    color: AppColors.text.secondary,
+    marginTop: 8,
+  },
+  loadMoreBtn: {
+    marginTop: 6,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  loadMoreText: {
+    color: AppColors.primary[500],
+    fontWeight: '600',
+  },
 });

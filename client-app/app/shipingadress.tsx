@@ -1,2 +1,3 @@
+import ShippingDetailScreen from "./(tabs)/shipping-detail";
 
-export { default } from './(tabs)/shipping-detail';
+export default ShippingDetailScreen;

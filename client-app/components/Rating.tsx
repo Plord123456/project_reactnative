@@ -71,14 +71,11 @@ for (let i = 1; i <= emptyStars; i++) {
 };
 
 export default Rating;
-
 const styles = StyleSheet.create({
   container: {
-        marginTop: Platform.OS === "android" ? 35 : 0,
-    
+    marginTop: Platform.OS === "android" ? 35 : 0,
     flexDirection: 'row',
     alignItems: 'center',
-  
   },
   starsContainer: {
     flexDirection: 'row',
@@ -87,7 +84,7 @@ const styles = StyleSheet.create({
   halfStarContainer: {
     position: 'relative',
     width: 16, // match your star size
-    height: 16, // match your star size
+    height: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -95,18 +92,29 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 0,
-    opacity: 0.3, // dim the background star
+    width: 16,
+    height: 16,
+    opacity: 0.3,
   },
   halfStarOverlay: {
     position: 'absolute',
     left: 0,
     top: 0,
     width: 8, // half of the star width
+    height: 16,
     overflow: 'hidden',
   },
+
   count: {
     marginLeft: 4,
-    color: AppColors.text.secondary, // or any color you prefer
-    fontSize: 14, // or match your design
+    color: AppColors.text.secondary,
+    fontSize: 14,
+  },
+  // Ensure all stars have the same size and alignment
+  star: {
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

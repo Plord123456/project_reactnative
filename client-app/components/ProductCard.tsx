@@ -113,6 +113,7 @@ const handleToggleFavorite = () => {
   );
 };
 
+export { ProductCard };
 export default ProductCard;
 
 const styles = StyleSheet.create({
