@@ -37,7 +37,7 @@ export interface Order {
 }
 
 const OrdersScreen = () => {
-    const { user } = useAuthStore();
+    const { user, isInitialized } = useAuthStore(); // Get isInitialized
     const router = useRouter();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
@@ -67,8 +67,10 @@ const OrdersScreen = () => {
     };
 
     useFocusEffect(useCallback(() => {
-        fetchOrders();
-    }, [user]));
+        if (isInitialized) { // Only fetch if auth is initialized
+            fetchOrders();
+        }
+    }, [user, isInitialized])); // Add isInitialized to dependencies
     
     // Điều hướng sang trang chi tiết
     const handleViewDetail = (orderId: number) => {
@@ -127,7 +129,7 @@ const OrdersScreen = () => {
     const handleDeleteOrder = (orderId: number) => {
         Alert.alert(
             'Delete Order',
-            'Are you sure you want to remove this order? This action cannot be undone.',
+            'Are you sure you want to permanently delete this order? This action cannot be undone.',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -138,25 +140,13 @@ const OrdersScreen = () => {
                             const { error } = await supabase
                                 .from('orders')
                                 .delete()
-                                .eq('id', orderId)
-                                .eq('user_email', user?.email ?? '');
+                                .eq('id', orderId);
 
-                            if (error) {
-                                throw error;
-                            }
-
-                            setOrders((prev) => prev.filter((order) => order.id !== orderId));
-                            Toast.show({
-                                type: 'success',
-                                text1: 'Order deleted',
-                                text2: `Order #${orderId} has been removed.`,
-                            });
+                            if (error) throw error;
+                            
+                            fetchOrders(); // Refresh the list
                         } catch (error: any) {
-                            Toast.show({
-                                type: 'error',
-                                text1: 'Delete failed',
-                                text2: error.message ?? 'Unable to delete order.',
-                            });
+                            Toast.show({ type: 'error', text1: 'Error', text2: 'Could not delete the order.' });
                         }
                     },
                 },
@@ -164,7 +154,7 @@ const OrdersScreen = () => {
         );
     };
 
-    if (loading) return <Loader />;
+    if (loading || !isInitialized) return <Loader />; // Show loader while initializing
 
     if (!user) return (
         <EmptyState
@@ -177,6 +167,14 @@ const OrdersScreen = () => {
 
     return (
         <Wrapper>
+            {/* Back button */}
+            <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => router.back()}
+            >
+                <Text style={styles.backButtonText}>← Back</Text>
+            </TouchableOpacity>
+
             <View style={styles.container}>
                 <Title >My Orders</Title>
                 {orders.length > 0 ? (
@@ -191,7 +189,8 @@ const OrdersScreen = () => {
                                 onPayNow={() => handlePayNow(item)}
                                 onViewDetail={() => handleViewDetail(item.id)}
                                 isPaying={payingOrderId === item.id}
-                                onDelete={handleDeleteOrder}
+                                onOrderHidden={() => handleDeleteOrder(item.id)}
+                                onDelete={() => handleDeleteOrder(item.id)}
                             />
                         )}
                         contentContainerStyle={{ paddingBottom: 20 }}
@@ -220,5 +219,14 @@ const styles = StyleSheet.create({
     pageTitle: {
         marginTop: 16,
         marginBottom: 20,
+    },
+    backButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+    },
+    backButtonText: {
+        fontSize: 16,
+        fontWeight: "600",
+        color: AppColors.primary[500],
     },
 });

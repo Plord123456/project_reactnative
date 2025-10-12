@@ -1,246 +1,265 @@
 // app/(tabs)/shipping-detail.tsx
-import { useState, useEffect, useMemo } from 'react';
-import { View, StyleSheet, Alert, ActivityIndicator, ScrollView, Modal, TouchableOpacity, FlatList, Text } from 'react-native';
-import { useRouter } from 'expo-router';
-const DEFAULT_COUNTRY = 'United States of America';
-import { useAuthStore } from '@/store/auth';
-import { useAddressStore } from '@/store/addressStore';
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  View,
+  StyleSheet,
+  Alert,
+  ScrollView,
+  Modal,
+  TouchableOpacity,
+  FlatList,
+  Text,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { useRouter } from "expo-router";
+import Toast from "react-native-toast-message";
+import Wrapper from "@/components/Wrapper";
+import CommonHeader from "@/components/CommonHeader";
+import AppColors from "@/constants/theme";
+import TextInput from "@/components/Textinput";
+import Button from "@/components/Button";
+import Loader from "@/components/loader";
+import { useAuthStore } from "@/store/auth";
+import { useAddressStore, Address } from "@/store/addressStore";
 
-import Wrapper from '@/components/Wrapper';
-import CommonHeader from '@/components/CommonHeader';
-import AppColors from '@/constants/theme';
-import TextInput from '@/components/Textinput';
-import Button from '@/components/Button';
+type City = { name: string; zipCodes: string[] };
+type State = { code: string; name: string; cities: City[] };
+type ModalStep = "state" | "city" | "zip";
 
-const US_STATES = [
-  { code: 'AL', name: 'Alabama' },
-  { code: 'AK', name: 'Alaska' },
-  { code: 'AZ', name: 'Arizona' },
-  { code: 'AR', name: 'Arkansas' },
-  { code: 'CA', name: 'California' },
-  { code: 'CO', name: 'Colorado' },
-  { code: 'CT', name: 'Connecticut' },
-  { code: 'DE', name: 'Delaware' },
-  { code: 'FL', name: 'Florida' },
-  { code: 'GA', name: 'Georgia' },
-  { code: 'HI', name: 'Hawaii' },
-  { code: 'ID', name: 'Idaho' },
-  { code: 'IL', name: 'Illinois' },
-  { code: 'IN', name: 'Indiana' },
-  { code: 'IA', name: 'Iowa' },
-  { code: 'KS', name: 'Kansas' },
-  { code: 'KY', name: 'Kentucky' },
-  { code: 'LA', name: 'Louisiana' },
-  { code: 'ME', name: 'Maine' },
-  { code: 'MD', name: 'Maryland' },
-  { code: 'MA', name: 'Massachusetts' },
-  { code: 'MI', name: 'Michigan' },
-  { code: 'MN', name: 'Minnesota' },
-  { code: 'MS', name: 'Mississippi' },
-  { code: 'MO', name: 'Missouri' },
-  { code: 'MT', name: 'Montana' },
-  { code: 'NE', name: 'Nebraska' },
-  { code: 'NV', name: 'Nevada' },
-  { code: 'NH', name: 'New Hampshire' },
-  { code: 'NJ', name: 'New Jersey' },
-  { code: 'NM', name: 'New Mexico' },
-  { code: 'NY', name: 'New York' },
-  { code: 'NC', name: 'North Carolina' },
-  { code: 'ND', name: 'North Dakota' },
-  { code: 'OH', name: 'Ohio' },
-  { code: 'OK', name: 'Oklahoma' },
-  { code: 'OR', name: 'Oregon' },
-  { code: 'PA', name: 'Pennsylvania' },
-  { code: 'RI', name: 'Rhode Island' },
-  { code: 'SC', name: 'South Carolina' },
-  { code: 'SD', name: 'South Dakota' },
-  { code: 'TN', name: 'Tennessee' },
-  { code: 'TX', name: 'Texas' },
-  { code: 'UT', name: 'Utah' },
-  { code: 'VT', name: 'Vermont' },
-  { code: 'VA', name: 'Virginia' },
-  { code: 'WA', name: 'Washington' },
-  { code: 'WV', name: 'West Virginia' },
-  { code: 'WI', name: 'Wisconsin' },
-  { code: 'WY', name: 'Wyoming' },
+const DEFAULT_COUNTRY = "United States of America";
+const US_LOCATIONS: State[] = [
+  {
+    code: "CA",
+    name: "California",
+    cities: [
+      { name: "Los Angeles", zipCodes: ["90001", "90002", "90003", "90004", "90005"] },
+      { name: "San Francisco", zipCodes: ["94102", "94103", "94104", "94105", "94107"] },
+      { name: "San Diego", zipCodes: ["92101", "92102", "92103", "92104", "92105"] },
+    ],
+  },
+  {
+    code: "NY",
+    name: "New York",
+    cities: [
+      { name: "New York City", zipCodes: ["10001", "10002", "10003", "10004", "10005"] },
+      { name: "Buffalo", zipCodes: ["14201", "14202", "14203", "14204", "14205"] },
+      { name: "Rochester", zipCodes: ["14602", "14603", "14604", "14605", "14606"] },
+    ],
+  },
+  {
+    code: "TX",
+    name: "Texas",
+    cities: [
+      { name: "Houston", zipCodes: ["77001", "77002", "77003", "77004", "77005"] },
+      { name: "Dallas", zipCodes: ["75201", "75202", "75203", "75204", "75205"] },
+      { name: "Austin", zipCodes: ["73301", "73344", "78701", "78702", "78703"] },
+    ],
+  },
 ];
 
 const ShippingDetailScreen = () => {
-  const router = useRouter();
-  const { user } = useAuthStore();
-  const { address, fetchAddress, updateAddress, loading } = useAddressStore();
+    const router = useRouter();
+    const { user } = useAuthStore();
+    const { address, loading: addressLoading, fetchAddress, updateAddress } = useAddressStore();
 
-  const [phone, setPhone] = useState('');
-  const [street, setStreet] = useState('');
-  const [city, setCity] = useState('');
-  const [stateProvince, setStateProvince] = useState('');
-  const [postalCode, setPostalCode] = useState('');
-  const [country, setCountry] = useState(DEFAULT_COUNTRY);
-  const [stateSearch, setStateSearch] = useState('');
-  const [stateModalVisible, setStateModalVisible] = useState(false);
-  const [pendingState, setPendingState] = useState('');
-  const [pendingCity, setPendingCity] = useState('');
-  const [pendingZip, setPendingZip] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
+    const [form, setForm] = useState<Address>({
+        phone: "", street: "", city: "", state: "", postal_code: "", country: DEFAULT_COUNTRY,
+    });
+    const [saving, setSaving] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchAddress();
-    }
-  }, [user]);
+    const [locationModalVisible, setLocationModalVisible] = useState(false);
+    const [modalStep, setModalStep] = useState<ModalStep>("state");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [selectedState, setSelectedState] = useState<State | null>(null);
+    const [selectedCity, setSelectedCity] = useState<City | null>(null);
+    const [selectedZip, setSelectedZip] = useState("");
 
-  const populateForm = (addr?: any) => {
-    setPhone(addr?.phone ?? '');
-    setStreet(addr?.street ?? '');
-    setCity(addr?.city ?? '');
-    setStateProvince(addr?.state ?? '');
-    setPostalCode(addr?.postal_code ?? '');
-    setCountry(addr?.country ?? DEFAULT_COUNTRY);
-    setPendingState(addr?.state ?? '');
-    setPendingCity(addr?.city ?? '');
-    setPendingZip(addr?.postal_code ?? '');
-  };
+    useEffect(() => {
+        if (!user) {
+            Alert.alert("Please login", "You need to sign in to manage your shipping address.", [
+                { text: "OK", onPress: () => router.push("/login") },
+            ]);
+            return;
+        }
+        fetchAddress();
+    }, [user]);
 
-  useEffect(() => {
-    if (address) {
-      populateForm(address);
-      setIsEditing(false);
-    } else {
-      populateForm(undefined);
-      setIsEditing(true);
-    }
-  }, [address]);
-
+    useEffect(() => {
+        if (address) {
+            setForm({
+                phone: address.phone ?? "", street: address.street ?? "", city: address.city ?? "",
+                state: address.state ?? "", postal_code: address.postal_code ?? "",
+                country: address.country ?? DEFAULT_COUNTRY,
+            });
+            setIsEditing(false);
+        } else {
+            setIsEditing(true);
+        }
+    }, [address]);
   const filteredStates = useMemo(() => {
-    const query = stateSearch.trim().toLowerCase();
-    if (!query) return US_STATES;
-    return US_STATES.filter((item) =>
-      item.name.toLowerCase().includes(query) || item.code.toLowerCase().includes(query)
-    ); 
-  }, [stateSearch]);
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return US_LOCATIONS;
+    return US_LOCATIONS.filter(
+      (state) => state.name.toLowerCase().includes(query) || state.code.toLowerCase().includes(query),
+    );
+  }, [searchQuery]);
 
-  const performSave = async () => {
-    if (!user) return;
-    try {
-      await updateAddress({ phone, street, city, state: stateProvince, postal_code: postalCode, country });
-      Alert.alert('Success', 'Shipping details saved successfully.');
-      setIsEditing(false);
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to save shipping details.');
+  const filteredCities = useMemo(() => {
+    if (!selectedState) return [];
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return selectedState.cities;
+    return selectedState.cities.filter((city) => city.name.toLowerCase().includes(query));
+  }, [selectedState, searchQuery]);
+
+  const filteredZipCodes = useMemo(() => {
+    if (!selectedCity) return [];
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return selectedCity.zipCodes;
+    return selectedCity.zipCodes.filter((zip) => zip.includes(query));
+  }, [selectedCity, searchQuery]);
+
+  const openLocationModal = () => {
+    const foundState = US_LOCATIONS.find((state) => state.code === form.state) ?? null;
+    const foundCity = foundState?.cities.find((city) => city.name === form.city) ?? null;
+    setSelectedState(foundState);
+    setSelectedCity(foundCity);
+    setSelectedZip(foundCity?.zipCodes.includes(form.postal_code) ? form.postal_code : "");
+    setSearchQuery("");
+    setModalStep(foundState ? (foundCity ? (form.postal_code ? "zip" : "zip") : "city") : "state");
+    setLocationModalVisible(true);
+  };
+
+  const handleStateSelect = (state: State) => {
+    setSelectedState(state);
+    setSelectedCity(null);
+    setSelectedZip("");
+    setSearchQuery("");
+    setModalStep("city");
+  };
+
+  const handleCitySelect = (city: City) => {
+    setSelectedCity(city);
+    setSelectedZip("");
+    setSearchQuery("");
+    setModalStep("zip");
+  };
+
+  const handleZipSelect = (zip: string) => {
+    setSelectedZip(zip);
+  };
+
+const handleSaveLocation = () => {
+        if (selectedState && selectedCity && selectedZip) {
+            setForm(prev => ({ ...prev, state: selectedState.code, city: selectedCity.name, postal_code: selectedZip }));
+            setLocationModalVisible(false);
+        }
+    };
+
+  const handleBackInModal = () => {
+    if (modalStep === "city") {
+      setModalStep("state");
+      setSearchQuery("");
+    } else if (modalStep === "zip") {
+      setModalStep("city");
+      setSearchQuery("");
     }
   };
 
-  const handleSavePress = () => {
-    if (!phone || !street || !city || !postalCode || !country) {
-      Alert.alert('Missing Information', 'Please fill in all required fields, including phone number and address.');
+  const validate = () => {
+    if (!form.phone.trim()) return "Phone number is required.";
+    if (!form.street.trim()) return "Street address is required.";
+    if (!form.city.trim()) return "City is required.";
+    if (!form.state.trim()) return "State is required.";
+    if (!form.postal_code.trim()) return "Postal code is required.";
+    if (!form.country.trim()) return "Country is required.";
+    return null;
+  };
+
+  const handleSavePress = async () => {
+    const errorMsg = validate();
+    if (errorMsg) {
+      Alert.alert("Validation", errorMsg);
       return;
     }
-
-    // Hiển thị hộp thoại xác nhận
-    Alert.alert(
-      "Confirm Changes", // Title
-      "Are you sure you want to save these changes?", // Message
-      [
-        {
-          text: "Cancel",
-          onPress: () => {},
-          style: "cancel"
-        },
-        { 
-          text: "Confirm", 
-          onPress: performSave // Chỉ gọi hàm lưu khi người dùng xác nhận
+    setSaving(true);
+        try {
+            await updateAddress(form);
+            Toast.show({ type: "success", text1: "Address saved!", position: "bottom" });
+            setIsEditing(false);
+            if (router.canGoBack()) router.back();
+        } catch (err: any) {
+            Alert.alert("Error", err?.message ?? "Unable to save address.");
+        } finally {
+            setSaving(false);
         }
-      ]
-    );
-  };
+    };
 
-  const hasAddress = Boolean(address && (
-    address.street || address.city || address.state || address.postal_code || address.country
-  ));
-
-  const handleEditPress = () => {
-    populateForm(address);
-    setIsEditing(true);
-  };
+    if (addressLoading) return <Loader />;
 
   const handleCancelEdit = () => {
     if (address) {
-      populateForm(address);
-      setIsEditing(false);
+      setForm({
+        phone: address.phone ?? "",
+        street: address.street ?? "",
+        city: address.city ?? "",
+        state: address.state ?? "",
+        postal_code: address.postal_code ?? "",
+        country: address.country ?? DEFAULT_COUNTRY,
+      });
     }
+    setIsEditing(false);
   };
+
+  const renderStateList = () => (
+        <FlatList data={filteredStates} keyExtractor={item => item.code} renderItem={({ item }) => (
+            <TouchableOpacity style={[styles.locationItem, selectedState?.code === item.code && styles.locationItemSelected]} onPress={() => handleStateSelect(item)}>
+                <View><Text style={styles.locationPrimaryText}>{item.name}</Text><Text style={styles.locationSecondaryText}>{item.code}</Text></View>
+                <Text style={styles.locationCount}>{item.cities.length} cities</Text>
+            </TouchableOpacity>
+        )} />
+    );
+
+  const hasAddress =
+    !!address && (address.street || address.city || address.state || address.postal_code || address.country);
+
+  if (addressLoading) return <Loader />;
 
   return (
     <Wrapper>
-      <CommonHeader
-        title="Shipping Details"
-        onBackPress={() => {
-          if (router.canGoBack()) {
-            router.back();
-            return;
-          }
-          router.push('/(tabs)/profile');
-        }}
-      />
-      <ScrollView>
-        <View style={styles.container}>
-          {loading && !address ? (
-            <ActivityIndicator style={{ marginTop: 30 }} size="large" color={AppColors.primary[500]} />
-          ) : !isEditing && hasAddress ? (
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryTitle}>Saved address</Text>
-              <View style={styles.summaryBlock}>
-                <Text style={styles.summaryLabel}>Phone</Text>
-                <Text style={styles.summaryValue}>{address?.phone || '—'}</Text>
-              </View>
-              <View style={styles.summaryBlock}>
-                <Text style={styles.summaryLabel}>Street</Text>
-                <Text style={styles.summaryValue}>{address?.street || '—'}</Text>
-              </View>
-              <View style={styles.summaryBlock}>
-                <Text style={styles.summaryLabel}>City / State</Text>
-                <Text style={styles.summaryValue}>
-                  {(() => {
-                    const parts = [address?.city, address?.state].filter(Boolean);
-                    const cityState = parts.length ? parts.join(', ') : '—';
-                    return `${cityState}${address?.postal_code ? ` ${address.postal_code}` : ''}`;
-                  })()}
-                </Text>
-              </View>
-              <View style={styles.summaryBlock}>
-                <Text style={styles.summaryLabel}>Country</Text>
-                <Text style={styles.summaryValue}>{address?.country || '—'}</Text>
-              </View>
-              <Button title="Edit Address" onPress={handleEditPress} fullWidth style={{ marginTop: 24 }} />
-            </View>
-          ) : (
+      <CommonHeader title="My Shipping Address" onBackPress={() => router.back()} />
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.flex}>
+        <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
+          {isEditing ? (
             <>
-              <TextInput 
-                placeholder="Phone Number*" 
-                value={phone} 
-                onChangeText={setPhone} 
-                keyboardType="phone-pad" 
+              <TextInput
+                label="Phone"
+                value={form.phone}
+                onChangeText={(text) => setForm((prev) => ({ ...prev, phone: text }))}
+                keyboardType="phone-pad"
+                placeholder="(123) 456-7890"
               />
-              <TextInput placeholder="Street*" value={street} onChangeText={setStreet} />
-              <Text style={styles.selectorLabel}>State, City & ZIP*</Text>
-              <TouchableOpacity
-                style={styles.selector}
-                onPress={() => {
-                  setPendingState(stateProvince);
-                  setPendingCity(city);
-                  setPendingZip(postalCode);
-                  setStateSearch('');
-                  setStateModalVisible(true);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={stateProvince ? styles.selectorValue : styles.selectorPlaceholder}>
-                  {stateProvince ? `${stateProvince} • ${city || 'City'} • ${postalCode || 'ZIP'}` : 'Select State, City & ZIP'}
+              <TextInput
+                label="Street Address"
+                value={form.street}
+                onChangeText={(text) => setForm((prev) => ({ ...prev, street: text }))}
+                placeholder="123 Main Street"
+              />
+              <Text style={styles.selectorLabel}>State, City & ZIP Code</Text>
+              <TouchableOpacity style={styles.selector} onPress={openLocationModal} activeOpacity={0.8}>
+                <Text style={form.state ? styles.selectorValue : styles.selectorPlaceholder}>
+                  {form.state ? `${form.state} • ${form.city} • ${form.postal_code}` : "Select State, City & ZIP"}
                 </Text>
               </TouchableOpacity>
-              <TextInput placeholder="Country*" value={country} onChangeText={setCountry} />
+              <TextInput
+                label="Country"
+                value={form.country}
+                onChangeText={(text) => setForm((prev) => ({ ...prev, country: text }))}
+                placeholder="United States"
+              />
               <View style={styles.formActions}>
-                {address && (
+                {hasAddress && (
                   <Button
                     title="Cancel"
                     variant="outline"
@@ -249,83 +268,102 @@ const ShippingDetailScreen = () => {
                   />
                 )}
                 <Button
+                  title="Save Address"
                   onPress={handleSavePress}
-                  disabled={loading}
-                  loading={loading}
-                  title="Save Details"
+                  loading={saving}
+                  disabled={saving}
                   style={{ flex: 1 }}
                 />
               </View>
             </>
+          ) : (
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>Saved Address</Text>
+              {hasAddress ? (
+                <>
+                  <View style={styles.summaryBlock}>
+                    <Text style={styles.summaryLabel}>Phone</Text>
+                    <Text style={styles.summaryValue}>{address?.phone}</Text>
+                  </View>
+                  <View style={styles.summaryBlock}>
+                    <Text style={styles.summaryLabel}>Street</Text>
+                    <Text style={styles.summaryValue}>{address?.street}</Text>
+                  </View>
+                  <View style={styles.summaryBlock}>
+                    <Text style={styles.summaryLabel}>City / State / ZIP</Text>
+                    <Text style={styles.summaryValue}>
+                      {address?.city}, {address?.state} {address?.postal_code}
+                    </Text>
+                  </View>
+                  <View style={styles.summaryBlock}>
+                    <Text style={styles.summaryLabel}>Country</Text>
+                    <Text style={styles.summaryValue}>{address?.country}</Text>
+                  </View>
+                  <Button title="Edit Address" onPress={() => setIsEditing(true)} fullWidth style={{ marginTop: 24 }} />
+                </>
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No shipping address yet. Add one to continue.</Text>
+                  <Button title="Add Address" onPress={() => setIsEditing(true)} fullWidth style={{ marginTop: 16 }} />
+                </View>
+              )}
+            </View>
           )}
-        </View>
-      </ScrollView>
-      <Modal
-        visible={stateModalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setStateModalVisible(false)}
-      >
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <Modal visible={locationModalVisible} animationType="slide" transparent onRequestClose={() => setLocationModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select State</Text>
+            <View style={styles.modalHeader}>
+              {modalStep !== "state" && (
+                <TouchableOpacity onPress={handleBackInModal}>
+                  <Text style={styles.backButtonText}>← Back</Text>
+                </TouchableOpacity>
+              )}
+              <Text style={styles.modalTitle}>
+                {modalStep === "state"
+                  ? "Select State"
+                  : modalStep === "city"
+                  ? `Select City - ${selectedState?.name}`
+                  : `Select ZIP - ${selectedCity?.name}, ${selectedState?.code}`}
+              </Text>
+              <TouchableOpacity onPress={() => setLocationModalVisible(false)}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
             <TextInput
-              placeholder="Search state"
-              value={stateSearch}
-              onChangeText={setStateSearch}
+              placeholder={`Search ${modalStep}...`}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
             />
-            <FlatList
-              data={filteredStates}
-              keyExtractor={(item) => item.code}
-              renderItem={({ item }) => {
-                const isSelected = pendingState === item.code;
-                return (
-                  <TouchableOpacity
-                    style={[styles.stateItem, isSelected && styles.stateItemSelected]}
-                    onPress={() => {
-                      setPendingState(item.code);
-                      setCountry(DEFAULT_COUNTRY);
-                    }}
-                  >
-                    <Text style={styles.stateName}>{item.name}</Text>
-                    <Text style={styles.stateCode}>{item.code}</Text>
-                  </TouchableOpacity>
-                );
-              }}
-            />
-            <TextInput
-              placeholder="City"
-              value={pendingCity}
-              onChangeText={setPendingCity}
-              style={{ marginTop: 12 }}
-            />
-            <TextInput
-              placeholder="ZIP / Postal Code"
-              value={pendingZip}
-              onChangeText={setPendingZip}
-              style={{ marginTop: 12 }}
-            />
+
+            <View style={styles.modalListContainer}>
+              {modalStep === "state" ? renderStateList() : modalStep === "city" ? renderCityList() : renderZipList()}
+            </View>
+
+            <View style={styles.selectedInfo}>
+              <Text style={styles.selectedInfoText}>
+                {selectedState && `State: ${selectedState.name}`}
+                {selectedCity && ` • City: ${selectedCity.name}`}
+                {selectedZip && ` • ZIP: ${selectedZip}`}
+              </Text>
+            </View>
+
             <View style={styles.modalActions}>
               <Button
                 title="Cancel"
                 variant="outline"
-                onPress={() => {
-                  setStateSearch('');
-                  setStateModalVisible(false);
-                }}
+                onPress={() => setLocationModalVisible(false)}
                 style={{ flex: 1, marginRight: 8 }}
               />
               <Button
-                title="Save"
-                onPress={() => {
-                  setStateProvince(pendingState);
-                  setCity(pendingCity);
-                  setPostalCode(pendingZip);
-                  setStateSearch('');
-                  setStateModalVisible(false);
-                }}
-                style={{ flex: 1 }}
-                disabled={!pendingState || !pendingCity || !pendingZip}
+                title="Save Location"
+                onPress={handleSaveLocation}
+                style={{ flex: 2 }}
+                disabled={!selectedState || !selectedCity || !selectedZip}
               />
             </View>
           </View>
@@ -336,105 +374,62 @@ const ShippingDetailScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    gap: 16,
-  },
+  flex: { flex: 1 },
+  form: { padding: 20, gap: 16 },
   selector: {
     borderWidth: 1,
     borderColor: AppColors.gray[200],
     borderRadius: 12,
-    padding: 14,
-    justifyContent: 'center',
+    padding: 16,
+    backgroundColor: AppColors.background.primary,
   },
-  selectorLabel: {
-    fontSize: 14,
-    color: AppColors.text.secondary,
-  },
-  selectorPlaceholder: {
-    color: AppColors.gray[400],
-    fontSize: 16,
-  },
-  selectorValue: {
-    color: AppColors.text.primary,
-    fontSize: 16,
-    fontWeight: '500',
-  },
+  selectorLabel: { fontSize: 16, fontWeight: "600", color: AppColors.text.primary },
+  selectorPlaceholder: { color: AppColors.gray[400], fontSize: 16 },
+  selectorValue: { color: AppColors.text.primary, fontSize: 16, fontWeight: "500" },
   summaryCard: {
     backgroundColor: AppColors.background.secondary,
     borderRadius: 16,
     padding: 24,
     gap: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
   },
-  summaryTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: AppColors.text.primary,
-  },
-  summaryBlock: {
-    gap: 4,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    color: AppColors.text.secondary,
-  },
-  summaryValue: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: AppColors.text.primary,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    backgroundColor: AppColors.background.secondary,
-    borderRadius: 16,
-    padding: 20,
-    maxHeight: '80%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: AppColors.text.primary,
-    marginBottom: 12,
-  },
-  stateItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
+  summaryTitle: { fontSize: 20, fontWeight: "700", color: AppColors.text.primary },
+  summaryBlock: { gap: 4 },
+  summaryLabel: { fontSize: 14, color: AppColors.text.secondary, fontWeight: "500" },
+  summaryValue: { fontSize: 16, fontWeight: "400", color: AppColors.text.primary },
+  emptyState: { alignItems: "center", paddingVertical: 20 },
+  emptyStateText: { textAlign: "center", color: AppColors.text.secondary, fontSize: 16, lineHeight: 24 },
+  formActions: { flexDirection: "row", marginTop: 24 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 20 },
+  modalContent: { backgroundColor: AppColors.background.primary, borderRadius: 16, padding: 20, maxHeight: "80%" },
+  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
+  backButtonText: { fontSize: 16, color: AppColors.primary, fontWeight: "600" },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: AppColors.text.primary, textAlign: "center" },
+  closeButtonText: { fontSize: 18, color: AppColors.text.secondary, fontWeight: "600" },
+  searchInput: { marginBottom: 16 },
+  modalListContainer: { maxHeight: 300, minHeight: 200 },
+  locationItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.gray[200],
+    borderBottomColor: AppColors.gray[100],
   },
-  stateItemSelected: {
-    backgroundColor: AppColors.gray[100],
-    borderRadius: 8,
-    paddingHorizontal: 8,
-  },
-  stateName: {
-    fontSize: 16,
-    color: AppColors.text.primary,
-  },
-  stateCode: {
-    fontSize: 14,
+  locationItemSelected: { backgroundColor: "#E3F2FD", borderRadius: 8 },
+  locationPrimaryText: { fontSize: 16, color: AppColors.text.primary, fontWeight: "500" },
+  locationSecondaryText: { fontSize: 14, color: AppColors.text.secondary, marginTop: 2 },
+  locationCount: {
+    fontSize: 12,
     color: AppColors.text.secondary,
+    backgroundColor: AppColors.gray[100],
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  formActions: {
-    flexDirection: 'row',
-    marginTop: 24,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    marginTop: 16,
-  },
+  selectedInfo: { paddingVertical: 12, borderTopWidth: 1, borderTopColor: AppColors.gray[200], marginTop: 16 },
+  selectedInfoText: { fontSize: 14, color: AppColors.text.secondary, textAlign: "center" },
+  modalActions: { flexDirection: "row", marginTop: 16, gap: 8 },
 });
 
 export default ShippingDetailScreen;

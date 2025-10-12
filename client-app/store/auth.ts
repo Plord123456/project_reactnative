@@ -14,6 +14,7 @@ interface AuthState {
     user: User | null;
     isLoading: boolean;
     error: string | null;
+    isInitialized: boolean; // Track if the initial session check is done
     login: (email: string, password: string) => Promise<boolean>; // Trả về boolean cho dễ xử lý ở component
     signup: (email: string, password: string) => Promise<boolean>;
     logout: () => Promise<void>;
@@ -39,6 +40,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     user: null,
     isLoading: true, // Bắt đầu với isLoading = true để checkSession chạy lần đầu
     error: null,
+    isInitialized: false, // Start as false
 
     setError: (error: string | null) => set({ error }),
 
@@ -119,6 +121,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             }
         } catch (error: any) {
              set({ user: null, isLoading: false, error: error.message });
+        } finally {
+            set({ isInitialized: true }); // Mark as initialized
         }
     },
 
@@ -140,3 +144,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
 // Gọi checkSession ngay khi store được khởi tạo
 useAuthStore.getState().checkSession();
+
+// Listen for auth state changes to keep the store in sync
+supabase.auth.onAuthStateChange((_event, session) => {
+  useAuthStore.setState({ session, user: session?.user ?? null, isInitialized: true });
+});

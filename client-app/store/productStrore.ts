@@ -14,6 +14,7 @@ interface ProductsState {
     error: string | null; // Thêm state `error`
     selectedCategory: string | null;
     sortBy: SortByType;
+    isInitialized: boolean; // Add initialization tracking
 
     // Các hàm được đặt lại tên theo yêu cầu
     fetchProducts: () => Promise<void>;
@@ -34,6 +35,7 @@ export const useProductStore = create<ProductsState>((set, get) => ({
     error: null, // Giá trị ban đầu cho error
     selectedCategory: null,
     sortBy: null,
+    isInitialized: false, // Default to false
 
     // --- HELPER FUNCTION (Giữ nguyên logic tối ưu) ---
     applyFilters: () => {
@@ -67,11 +69,12 @@ export const useProductStore = create<ProductsState>((set, get) => ({
             set({
                 products: productsData,
                 filteredProducts: productsData,
-                loading: false,
             });
         } catch (error: any) {
             console.error("Failed to fetch products:", error);
-            set({ loading: false, error: error.message });
+            set({ error: error.message });
+        } finally {
+            set({ loading: false, isInitialized: true }); // Mark as initialized
         }
     },
 
