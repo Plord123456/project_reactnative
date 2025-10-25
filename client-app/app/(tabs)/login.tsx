@@ -1,5 +1,5 @@
-import { KeyboardAvoidingView, StyleSheet, Text, View, Platform, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
-import React, { useState } from 'react';
+import { KeyboardAvoidingView, StyleSheet, Text, View, Platform, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react'; // Thêm useEffect
 import AppColors from '@/constants/theme';
 import Wrapper from '@/components/Wrapper';
 import { Foundation } from '@expo/vector-icons';
@@ -8,64 +8,87 @@ import { useAuthStore } from '@/store/auth';
 import TextInputCustom from '@/components/Textinput';
 import Button from '@/components/Button';
 import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
+import * as Google from 'expo-auth-session/providers/google';
+// *** QUAN TRỌNG: Xóa hoặc comment out import từ @react-native-google-signin nếu có ***
+// import { GoogleSignin, GoogleSigninButton, statusCodes } from '@react-native-google-signin/google-signin';
 import { supabase } from '@/lib/superbase';
 
-// Sửa lại đường dẫn tương đối cho đúng từ app/(tabs)
-const googleLogo = require("../../assets/images/logo/Google-Logo.png");
+WebBrowser.maybeCompleteAuthSession();
 
+// --- ĐIỀN CÁC CLIENT ID CỦA BẠN VÀO ĐÂY ---
+// Client ID dùng cho Web (và thường dùng cho Expo Go / Web build)
+const WEB_CLIENT_ID = '136208304843-83v6vogeghceijnamsdlg1g3ec07q8id.apps.googleusercontent.com';
+// Client ID bạn tạo riêng cho ứng dụng Android (dùng cho Development/Standalone build)
+const ANDROID_CLIENT_ID = '136208304843-5og7q0k3iln2hh7ej8fs1ca3hjgpnvqc.apps.googleusercontent.com';
+// const EXPO_CLIENT_ID = 'YOUR_EXPO_CLIENT_ID'; // Có thể không cần thiết nếu bạn dùng Web/Android/iOS IDs
+// ------------------------------------------
+const redirectUri = makeRedirectUri(); 
+
+// Log ra để biết URL cần thêm vào Google Console
+console.log('Your Expo Proxy Redirect URI:', redirectUri);
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [emailError, setEmailError] = useState('');
     const [passwordError, setPasswordError] = useState('');
-    
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
     const router = useRouter();
     const { login, isLoading, error, setError } = useAuthStore();
 
-    // SỬ DỤNG MỘT ĐỊA CHỈ REDIRECT CỐ ĐỊNH DUY NHẤT
-    // Địa chỉ này phải khớp với "scheme" trong app.json và được đăng ký trên Google Cloud
-    const redirectTo = 'shopcartyt://login/callback';
-    console.log('Using native OAuth redirect URI:', redirectTo);
+    // Sử dụng Expo Auth Session - Yêu cầu idToken
+    const [request, response, promptAsync] = Google.useIdTokenAuthRequest({ // <-- Đổi thành useIdTokenAuthRequest
+        clientId: WEB_CLIENT_ID, // <-- Dùng Web Client ID ở đây
+        // --- Cung cấp các ID khác cho bản build standalone ---
+        androidClientId: ANDROID_CLIENT_ID,
+        // expoClientId: EXPO_CLIENT_ID, // Nếu cần
+    });
 
-    const signInWithGoogle = async () => {
+    // Xử lý response từ Google OAuth
+    useEffect(() => {
+        if (response?.type === 'success') {
+            const { id_token } = response.params; // Lấy id_token từ params
+            if (id_token) {
+              handleGoogleSignInWithIdToken(id_token); // Gọi hàm xử lý với idToken
+            } else {
+              Alert.alert('Lỗi', 'Không nhận được ID token từ Google');
+            }
+        } else if (response?.type === 'error') {
+            console.error("Lỗi Google Auth:", response.error);
+            Alert.alert('Lỗi', response.error?.message || 'Đăng nhập Google thất bại');
+        }
+    }, [response]);
+
+    // Hàm xử lý đăng nhập Supabase bằng idToken
+    const handleGoogleSignInWithIdToken = async (idToken: string) => {
+        setIsGoogleLoading(true);
         try {
-            const { data, error } = await supabase.auth.signInWithOAuth({
+            const { data, error: supabaseError } = await supabase.auth.signInWithIdToken({
                 provider: 'google',
-                options: {
-                    redirectTo,
-                    skipBrowserRedirect: true,
-                },
+                token: idToken, // Sử dụng idToken nhận được
             });
 
-            if (error) throw error;
+            console.log('Supabase Auth Data:', data);
+            console.log('Supabase Auth Error:', supabaseError);
 
-            if (data.url) {
-                const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-
-                if (result.type === 'success' && result.url) {
-                    const url = result.url;
-                    const params = new URL(url).hash.substring(1).split('&').reduce((acc, part) => {
-                        const [key, value] = part.split('=');
-                        acc[decodeURIComponent(key)] = decodeURIComponent(value);
-                        return acc;
-                    }, {} as Record<string, string>);
-
-                    if (params.access_token && params.refresh_token) {
-                        await supabase.auth.setSession({
-                            access_token: params.access_token,
-                            refresh_token: params.refresh_token,
-                        });
-                        Alert.alert('Thành công', 'Đăng nhập với Google thành công!');
-                        router.replace('/(tabs)/profile'); // Chuyển hướng sau khi đăng nhập
-                    } else {
-                        throw new Error('Không thể lấy thông tin session từ URL.');
-                    }
-                } else if (result.type !== 'cancel') {
-                    Alert.alert('Lỗi', 'Quá trình đăng nhập đã thất bại.');
-                }
+            if (supabaseError) {
+                throw supabaseError;
             }
-        } catch (catchedError: any) {
-            Alert.alert('Lỗi đăng nhập', catchedError.message);
+
+            if (data.session) {
+                Alert.alert('Thành công', 'Đăng nhập bằng Google thành công!');
+                router.replace('/(tabs)/profile');
+                setEmail('');
+                setPassword('');
+            } else {
+                Alert.alert('Lỗi', 'Không thể tạo phiên đăng nhập Supabase.');
+            }
+        } catch (error: any) {
+            console.error('Lỗi đăng nhập Supabase với Google idToken:', error);
+            Alert.alert('Lỗi', error.message || 'Đã xảy ra lỗi khi đăng nhập bằng Google.');
+        } finally {
+            setIsGoogleLoading(false);
         }
     };
 
@@ -73,7 +96,7 @@ const Login = () => {
         if (error) {
             setError(null);
         }
-        
+
         let isValid = true;
         if (!email.trim()) {
             setEmailError('Email is required');
@@ -106,13 +129,17 @@ const Login = () => {
             }
         }
     };
-    
+
     const handleOnChangeText = (setter: Function, value: string) => {
         setter(value);
         if (error) {
             setError(null);
         }
     }
+
+    const handleGoogleLogin = () => {
+        promptAsync();
+    };
 
     return (
         <Wrapper>
@@ -158,9 +185,19 @@ const Login = () => {
                             style={styles.button}
                             onPress={handleLogin}
                         />
-                        <TouchableOpacity style={styles.googleButton} onPress={signInWithGoogle}>
-                            <Image source={googleLogo} style={styles.googleLogo} />
-                            <Text style={styles.googleButtonText}>Sign In with Google</Text>
+                        
+                        {/* Nút Google Sign In với Expo Auth Session */}
+                        <TouchableOpacity
+                            style={[
+                                styles.googleButton,
+                                isGoogleLoading && styles.googleButtonDisabled
+                            ]}
+                            onPress={handleGoogleLogin}
+                            disabled={isGoogleLoading || !request}
+                        >
+                            <Text style={styles.googleButtonText}>
+                                {isGoogleLoading ? 'Đang đăng nhập...' : 'Đăng nhập với Google'}
+                            </Text>
                         </TouchableOpacity>
                     </View>
 
@@ -178,7 +215,6 @@ const Login = () => {
 
 export default Login;
 
-// Giữ nguyên các style của bạn
 const styles = StyleSheet.create({
     scrollContainer: {
         flexGrow: 1,
@@ -222,18 +258,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 12,
-        backgroundColor: '#ffffffff', // Thêm màu nền cho nút Google
+        backgroundColor: '#4285F4',
     },
-    googleLogo: {
-        width: 70, // Sửa lại kích thước cho phù hợp
-        height: 35,
-        resizeMode: 'contain',
+    googleButtonDisabled: {
+        opacity: 0.6,
     },
     googleButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: AppColors.primary[500], // Chữ màu trắng
+        color: '#FFFFFF',
     },
     footer: {
         flexDirection: "row",
