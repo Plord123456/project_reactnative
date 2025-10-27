@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "136208304843",
+    "project_id": "shopappreactnative-d8423",
+    "storage_bucket": "shopappreactnative-d8423.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:136208304843:android:8543b3a7a31e3261de294e",
+        "android_client_info": {
+          "package_name": "com.plord1234.shopcartyt"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPEYoP_HiS14LkPG-k5rJp7ZLkxknjPJM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
